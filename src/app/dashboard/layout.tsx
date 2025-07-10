@@ -12,7 +12,10 @@ import { Sidebar } from '@/components/Sidebar';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { SearchModal } from '@/components/SearchModal';
-import { LogOut, User, Search } from 'lucide-react';
+import { ProfileDropdown } from '@/components/ProfileDropdown';
+import { ToastContainer } from '@/components/ui/Toast';
+import { EncryptionPasswordModal, useEncryptionPasswordModal } from '@/components/EncryptionPasswordModal';
+import { Search } from 'lucide-react';
 
 export default function DashboardLayout({
   children,
@@ -23,6 +26,7 @@ export default function DashboardLayout({
   const { loadWorkspaces, currentWorkspace } = useWorkspaces();
   const { loadProjects } = useProjects();
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const { modalState, handleSubmit, closeModal } = useEncryptionPasswordModal();
   const router = useRouter();
 
   useEffect(() => {
@@ -103,22 +107,9 @@ export default function DashboardLayout({
                 </div>
               </button>
 
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <User className="w-4 h-4" />
-                <span>{user.username}</span>
-              </div>
-
               <ThemeToggle size="sm" />
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
+              <ProfileDropdown onLogout={handleLogout} />
             </div>
           </div>
         </header>
@@ -133,6 +124,17 @@ export default function DashboardLayout({
       <SearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
+      />
+
+      {/* Toast Container */}
+      <ToastContainer />
+
+      {/* Encryption Password Modal */}
+      <EncryptionPasswordModal
+        isOpen={modalState.isOpen}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+        userEmail={modalState.userEmail}
       />
     </div>
   );

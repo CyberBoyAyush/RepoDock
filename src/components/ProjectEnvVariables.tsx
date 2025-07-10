@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { useState } from 'react';
-import { Plus, Key, Eye, EyeOff, Copy, Edit, Trash2, Search, Settings } from 'lucide-react';
+import { Plus, Key, Eye, EyeOff, Copy, Edit, Trash2, Search, Settings, Shield, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
@@ -15,6 +15,7 @@ import { localDB } from '@/lib/localdb';
 import { encryptionService } from '@/lib/encryption';
 import { generateId, copyToClipboard } from '@/lib/utils';
 import { EnvVariable } from '@/types';
+import { showErrorToast } from '@/components/ui/Toast';
 
 interface ProjectEnvVariablesProps {
   projectId: string;
@@ -26,6 +27,7 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
   const [editingVar, setEditingVar] = useState<EnvVariable | null>(null);
   const [visibleValues, setVisibleValues] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [keyVerificationStatus, setKeyVerificationStatus] = useState<'unknown' | 'verified' | 'failed'>('unknown');
   const { user } = useAuth();
 
   // Load environment variables
@@ -36,41 +38,107 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
     }
   }, [user, projectId]);
 
+  // Check key verification status
+  React.useEffect(() => {
+    const checkKeyVerification = async () => {
+      if (!user) {
+        setKeyVerificationStatus('unknown');
+        return;
+      }
+
+      try {
+        const storageKey = `repodock_encryption_password_${user.email}`;
+        const hasStoredPassword = localStorage.getItem(storageKey);
+
+        if (!hasStoredPassword) {
+          setKeyVerificationStatus('failed');
+          return;
+        }
+
+        // Test encryption/decryption to verify key works
+        const testValue = 'test-key-verification';
+        const encrypted = await encryptionService.encryptEnvValueWithUser(testValue, user.email);
+        const decrypted = await encryptionService.decryptEnvValueWithUser(encrypted, user.email);
+
+        if (decrypted === testValue) {
+          setKeyVerificationStatus('verified');
+        } else {
+          setKeyVerificationStatus('failed');
+        }
+      } catch (error) {
+        console.error('Key verification failed:', error);
+        setKeyVerificationStatus('failed');
+      }
+    };
+
+    checkKeyVerification();
+  }, [user]);
+
   const filteredEnvVars = envVars.filter(envVar =>
     envVar.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
     envVar.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const toggleValueVisibility = (id: string) => {
+  const toggleValueVisibility = async (envVar: EnvVariable) => {
     setVisibleValues(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
+      if (newSet.has(envVar.id)) {
+        newSet.delete(envVar.id);
       } else {
-        newSet.add(id);
+        newSet.add(envVar.id);
+        // Decrypt the value when showing it
+        if (!decryptedValues[envVar.id]) {
+          getDecryptedValue(envVar);
+        }
       }
       return newSet;
     });
   };
 
-  const getDecryptedValue = (envVar: EnvVariable): string => {
-    if (!user) return '[ERROR: No user]';
+  const [decryptedValues, setDecryptedValues] = useState<Record<string, string>>({});
+  const [decryptionErrorShown, setDecryptionErrorShown] = useState(false);
+
+  const getDecryptedValue = async (envVar: EnvVariable): Promise<void> => {
+    if (!user) return;
 
     try {
       console.log('Attempting to decrypt project env var:', { id: envVar.id, key: envVar.key, hasValue: !!envVar.value });
-      const decrypted = encryptionService.decryptEnvValue(envVar.value, user.id);
+      const decrypted = await encryptionService.decryptEnvValueWithUser(envVar.value, user.email);
       console.log('Decryption successful for project env var:', envVar.key);
-      return decrypted;
+      setDecryptedValues(prev => ({ ...prev, [envVar.id]: decrypted }));
+      // Reset error flag on successful decryption
+      setDecryptionErrorShown(false);
     } catch (error) {
       console.error('Decryption failed for project env var:', envVar.key, error);
-      return '[DECRYPTION_FAILED]';
+      setDecryptedValues(prev => ({ ...prev, [envVar.id]: '[DECRYPTION_FAILED]' }));
+
+      // Show error toast only once per session
+      if (!decryptionErrorShown) {
+        setDecryptionErrorShown(true);
+        showErrorToast(
+          'Decryption Failed',
+          'Wrong encryption password or corrupted data. Please check your encryption password in Settings.'
+        );
+      }
     }
   };
 
+  const getDisplayValue = (envVar: EnvVariable): string => {
+    if (visibleValues.has(envVar.id)) {
+      return decryptedValues[envVar.id] || 'Decrypting...';
+    }
+    return '••••••••';
+  };
+
   const handleCopyValue = async (envVar: EnvVariable) => {
-    const decryptedValue = getDecryptedValue(envVar);
+    const decryptedValue = decryptedValues[envVar.id];
+    if (!decryptedValue) {
+      await getDecryptedValue(envVar);
+      return;
+    }
+
     const success = await copyToClipboard(decryptedValue);
-    
+
     if (success) {
       // You could add a toast notification here
       console.log('Value copied to clipboard');
@@ -124,6 +192,49 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Key Verification Status */}
+          <div className="flex items-center justify-between p-3 rounded-md border border-border/50 bg-card/30">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                keyVerificationStatus === 'verified'
+                  ? 'bg-green-500'
+                  : keyVerificationStatus === 'failed'
+                  ? 'bg-red-500'
+                  : 'bg-yellow-500'
+              }`} />
+              <span className="text-sm font-medium">
+                {keyVerificationStatus === 'verified'
+                  ? 'Encryption Key Verified'
+                  : keyVerificationStatus === 'failed'
+                  ? 'Encryption Key Not Set'
+                  : 'Checking Encryption Key...'}
+              </span>
+              {keyVerificationStatus === 'verified' && (
+                <CheckCircle className="w-4 h-4 text-green-500" />
+              )}
+              {keyVerificationStatus === 'failed' && (
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              )}
+            </div>
+            {keyVerificationStatus === 'failed' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-red-600 hover:text-red-700"
+                onClick={() => {
+                  // Clear stored password to force re-entry
+                  if (user) {
+                    encryptionService.clearUserEncryptionPassword(user.email);
+                    window.location.reload();
+                  }
+                }}
+                title="Set up encryption key"
+              >
+                <Shield className="w-3 h-3 mr-1" />
+                Setup
+              </Button>
+            )}
+          </div>
           {/* Search */}
           {envVars.length > 0 && (
             <div className="relative p-4 bg-muted/30 rounded-lg">
@@ -195,7 +306,7 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
                         variant="outline"
                         size="sm"
                         className="h-9 px-3"
-                        onClick={() => toggleValueVisibility(envVar.id)}
+                        onClick={() => toggleValueVisibility(envVar)}
                         title={visibleValues.has(envVar.id) ? 'Hide value' : 'Show value'}
                       >
                         {visibleValues.has(envVar.id) ? (
@@ -250,7 +361,7 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
                     <div className="text-sm">
                       {visibleValues.has(envVar.id) ? (
                         <code className="break-all font-mono text-sm bg-background px-2 py-1 rounded">
-                          {getDecryptedValue(envVar)}
+                          {getDisplayValue(envVar)}
                         </code>
                       ) : (
                         <span className="text-muted-foreground font-mono">••••••••••••••••••••••••••••••••</span>
@@ -310,18 +421,24 @@ function ProjectEnvVariableForm({
 
     setIsLoading(true);
     try {
-      const encryptedValue = encryptionService.encryptEnvValue(formData.value, user.id);
-      
       if (isEditing && envVar) {
         // Update existing variable
-        localDB.updateEnvVariable(envVar.id, {
+        const updates: any = {
           key: formData.key,
-          value: formData.value ? encryptedValue : envVar.value, // Only update value if provided
           description: formData.description,
           isSecret: formData.isSecret,
-        });
+        };
+
+        // Only update value if provided
+        if (formData.value) {
+          updates.value = await encryptionService.encryptEnvValueWithUser(formData.value, user.email);
+        }
+
+        localDB.updateEnvVariable(envVar.id, updates);
       } else {
         // Create new variable
+        const encryptedValue = await encryptionService.encryptEnvValueWithUser(formData.value, user.email);
+
         const newEnvVar: EnvVariable = {
           id: generateId('env'),
           key: formData.key,

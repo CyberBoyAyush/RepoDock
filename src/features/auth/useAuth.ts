@@ -183,10 +183,11 @@ export const useAuth = create<AuthStore>()(
 
       logout: () => {
         const { user } = get();
-        
-        // Clear encryption keys
+
+        // Clear encryption keys and passwords
         if (user) {
           encryptionService.clearMasterKey(user.id);
+          encryptionService.clearUserEncryptionPassword(user.email);
         }
 
         // Clear all local data

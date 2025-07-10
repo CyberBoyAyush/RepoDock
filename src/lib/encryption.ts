@@ -3,6 +3,7 @@
 
 import CryptoJS from 'crypto-js';
 import { EncryptedData } from '@/types';
+import { showEncryptionPasswordModal } from '@/components/EncryptionPasswordModal';
 
 class EncryptionService {
   private static instance: EncryptionService;
@@ -45,27 +46,32 @@ class EncryptionService {
   }
 
   /**
-   * Get or generate master key for the user
+   * Get master key from user email + encryption password
    */
-  private getMasterKey(userId: string): string {
-    const storageKey = `repodock_master_key_${userId}`;
-    let masterKey = localStorage.getItem(storageKey);
-    
-    if (!masterKey) {
-      // Generate a new master key
-      masterKey = CryptoJS.lib.WordArray.random(256/8).toString();
-      localStorage.setItem(storageKey, masterKey);
+  private getMasterKey(userEmail: string, encryptionPassword: string): string {
+    if (!userEmail || !encryptionPassword) {
+      throw new Error('User email and encryption password are required');
     }
-    
-    return masterKey;
+
+    // Combine email and encryption password to create a unique master key
+    const combinedKey = `${userEmail}:${encryptionPassword}`;
+
+    // Use PBKDF2 to derive a consistent master key from the combined string
+    const masterKey = CryptoJS.PBKDF2(combinedKey, userEmail, {
+      keySize: 256/32,
+      iterations: this.iterations,
+      hasher: CryptoJS.algo.SHA256
+    });
+
+    return masterKey.toString();
   }
 
   /**
    * Encrypt a value using AES-256-CBC
    */
-  encrypt(value: string, userId: string): EncryptedData {
+  encrypt(value: string, userEmail: string, encryptionPassword: string): EncryptedData {
     try {
-      const masterKey = this.getMasterKey(userId);
+      const masterKey = this.getMasterKey(userEmail, encryptionPassword);
       const salt = this.generateSalt();
       const iv = this.generateIV();
 
@@ -91,9 +97,9 @@ class EncryptionService {
   /**
    * Decrypt a value using AES-256-CBC
    */
-  decrypt(encryptedData: EncryptedData, userId: string): string {
+  decrypt(encryptedData: EncryptedData, userEmail: string, encryptionPassword: string): string {
     try {
-      const masterKey = this.getMasterKey(userId);
+      const masterKey = this.getMasterKey(userEmail, encryptionPassword);
 
       // Parse the separate components
       const salt = CryptoJS.enc.Base64.parse(encryptedData.salt);
@@ -167,9 +173,52 @@ class EncryptionService {
   }
 
   /**
-   * Clear master key (for logout)
+   * Get user's encryption password from localStorage or show modal
+   */
+  async getUserEncryptionPassword(userEmail: string): Promise<string> {
+    const storageKey = `repodock_encryption_password_${userEmail}`;
+    let encryptionPassword = localStorage.getItem(storageKey);
+
+    if (!encryptionPassword) {
+      try {
+        // Show modal for encryption password
+        encryptionPassword = await showEncryptionPasswordModal(userEmail);
+
+        if (!encryptionPassword) {
+          throw new Error('Encryption password is required');
+        }
+
+        // Store the password for this session
+        localStorage.setItem(storageKey, encryptionPassword);
+      } catch (error) {
+        throw new Error('Encryption password is required');
+      }
+    }
+
+    return encryptionPassword;
+  }
+
+  /**
+   * Set user's encryption password
+   */
+  setUserEncryptionPassword(userEmail: string, password: string): void {
+    const storageKey = `repodock_encryption_password_${userEmail}`;
+    localStorage.setItem(storageKey, password);
+  }
+
+  /**
+   * Clear encryption password (for logout)
+   */
+  clearUserEncryptionPassword(userEmail: string): void {
+    const storageKey = `repodock_encryption_password_${userEmail}`;
+    localStorage.removeItem(storageKey);
+  }
+
+  /**
+   * Clear master key (for logout) - deprecated
    */
   clearMasterKey(userId: string): void {
+    // This method is kept for backward compatibility
     const storageKey = `repodock_master_key_${userId}`;
     localStorage.removeItem(storageKey);
   }
@@ -190,17 +239,17 @@ class EncryptionService {
   /**
    * Encrypt environment variable value
    */
-  encryptEnvValue(value: string, userId: string): string {
-    const encrypted = this.encrypt(value, userId);
+  encryptEnvValue(value: string, userEmail: string, encryptionPassword: string): string {
+    const encrypted = this.encrypt(value, userEmail, encryptionPassword);
     return JSON.stringify(encrypted);
   }
 
   /**
    * Decrypt legacy format (for backward compatibility)
    */
-  private decryptLegacy(encryptedData: { encrypted: string; iv: string }, userId: string): string {
+  private decryptLegacy(encryptedData: { encrypted: string; iv: string }, userEmail: string, encryptionPassword: string): string {
     try {
-      const masterKey = this.getMasterKey(userId);
+      const masterKey = this.getMasterKey(userEmail, encryptionPassword);
       const combined = CryptoJS.enc.Base64.parse(encryptedData.encrypted);
 
       // Extract salt, iv, and ciphertext from combined format
@@ -235,13 +284,13 @@ class EncryptionService {
   /**
    * Decrypt environment variable value
    */
-  decryptEnvValue(encryptedValue: string, userId: string): string {
+  decryptEnvValue(encryptedValue: string, userEmail: string, encryptionPassword: string): string {
     try {
       const encryptedData = JSON.parse(encryptedValue);
 
       // Check if it's the new format with salt
       if (this.isValidEncryptedData(encryptedData)) {
-        return this.decrypt(encryptedData, userId);
+        return this.decrypt(encryptedData, userEmail, encryptionPassword);
       }
 
       // Handle legacy format (without salt) - for backward compatibility
@@ -251,39 +300,33 @@ class EncryptionService {
           typeof encryptedData.iv === 'string') {
 
         console.warn('Using legacy encryption format, consider re-encrypting data');
-        return this.decryptLegacy(encryptedData, userId);
+        return this.decryptLegacy(encryptedData, userEmail, encryptionPassword);
       }
 
       throw new Error('Invalid encrypted data format');
     } catch (error) {
-      console.error('Failed to decrypt environment variable:', error, { encryptedValue });
-      return '[DECRYPTION_FAILED]';
+      console.error('Failed to decrypt environment variable:', error);
+      throw error; // Re-throw to let the calling component handle the error
     }
   }
 
   /**
-   * Test encryption/decryption functionality
+   * Convenience method: Encrypt environment variable with auto-retrieved password
    */
-  testEncryption(userId: string): boolean {
-    try {
-      const testValue = 'test-value-123';
-      console.log('Testing encryption with value:', testValue);
-
-      const encrypted = this.encryptEnvValue(testValue, userId);
-      console.log('Encrypted value:', encrypted);
-
-      const decrypted = this.decryptEnvValue(encrypted, userId);
-      console.log('Decrypted value:', decrypted);
-
-      const success = decrypted === testValue;
-      console.log('Encryption test result:', success);
-
-      return success;
-    } catch (error) {
-      console.error('Encryption test failed:', error);
-      return false;
-    }
+  async encryptEnvValueWithUser(value: string, userEmail: string): Promise<string> {
+    const encryptionPassword = await this.getUserEncryptionPassword(userEmail);
+    return this.encryptEnvValue(value, userEmail, encryptionPassword);
   }
+
+  /**
+   * Convenience method: Decrypt environment variable with auto-retrieved password
+   */
+  async decryptEnvValueWithUser(encryptedValue: string, userEmail: string): Promise<string> {
+    const encryptionPassword = await this.getUserEncryptionPassword(userEmail);
+    return this.decryptEnvValue(encryptedValue, userEmail, encryptionPassword);
+  }
+
+
 
   /**
    * Re-encrypt all user data with new master key (for key rotation)

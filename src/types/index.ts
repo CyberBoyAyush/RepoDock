@@ -5,6 +5,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
+  encryptionPassword?: string; // Optional encryption password for env variables
   createdAt: string;
   updatedAt: string;
 }
