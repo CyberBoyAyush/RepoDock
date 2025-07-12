@@ -49,22 +49,22 @@ export function Toast({ id, type, title, message, duration = 5000, onClose }: To
   const getBackgroundColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-50 border-green-200 dark:bg-green-950/80 dark:border-green-800';
+        return 'bg-green-50/95 border-green-200/50 dark:bg-green-950/95 dark:border-green-800/50 backdrop-blur-xl';
       case 'error':
-        return 'bg-red-50 border-red-200 dark:bg-red-950/80 dark:border-red-800';
+        return 'bg-red-50/95 border-red-200/50 dark:bg-red-950/95 dark:border-red-800/50 backdrop-blur-xl';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/80 dark:border-yellow-800';
+        return 'bg-yellow-50/95 border-yellow-200/50 dark:bg-yellow-950/95 dark:border-yellow-800/50 backdrop-blur-xl';
       case 'info':
-        return 'bg-blue-50 border-blue-200 dark:bg-blue-950/80 dark:border-blue-800';
+        return 'bg-blue-50/95 border-blue-200/50 dark:bg-blue-950/95 dark:border-blue-800/50 backdrop-blur-xl';
     }
   };
 
   return (
     <div
       className={cn(
-        'fixed top-4 right-4 z-50 max-w-sm w-full border rounded-lg shadow-lg transition-all duration-300 transform',
+        'fixed top-4 right-4 z-[9999] max-w-sm w-full border rounded-xl shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all duration-300 transform',
         getBackgroundColor(),
-        isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+        isVisible ? 'translate-x-0 opacity-100 scale-100' : 'translate-x-full opacity-0 scale-95'
       )}
     >
       <div className="p-4">
@@ -85,7 +85,10 @@ export function Toast({ id, type, title, message, duration = 5000, onClose }: To
           <div className="ml-4 flex-shrink-0">
             <button
               onClick={handleClose}
-              className="inline-flex text-muted-foreground hover:text-foreground transition-colors"
+              className={cn(
+                'inline-flex p-1 rounded-lg text-muted-foreground hover:text-foreground',
+                'hover:bg-background/50 transition-all duration-200 hover:scale-110 active:scale-95'
+              )}
             >
               <X className="w-4 h-4" />
             </button>

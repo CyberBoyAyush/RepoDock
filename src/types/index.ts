@@ -14,6 +14,7 @@ export interface Workspace {
   id: string;
   name: string;
   description?: string;
+  color?: string; // Hex color for workspace folder
   userId: string;
   createdAt: string;
   updatedAt: string;
@@ -118,6 +119,7 @@ export interface AppState {
 export interface WorkspaceFormData {
   name: string;
   description?: string;
+  color?: string;
 }
 
 export interface ProjectFormData {

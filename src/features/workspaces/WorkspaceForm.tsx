@@ -21,6 +21,7 @@ export function WorkspaceForm({ workspace, onSuccess, onCancel }: WorkspaceFormP
   const [formData, setFormData] = useState<WorkspaceFormData>({
     name: workspace?.name || '',
     description: workspace?.description || '',
+    color: workspace?.color || '#3b82f6', // Default blue color
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -111,6 +112,36 @@ export function WorkspaceForm({ workspace, onSuccess, onCancel }: WorkspaceFormP
               {errors.description}
             </p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Color
+          </label>
+          <div className="flex items-center space-x-3">
+            <input
+              type="color"
+              value={formData.color}
+              onChange={(e) => handleInputChange('color', e.target.value)}
+              className="w-12 h-10 rounded-md border border-input cursor-pointer"
+            />
+            <div className="flex-1">
+              <input
+                type="text"
+                value={formData.color}
+                onChange={(e) => handleInputChange('color', e.target.value)}
+                placeholder="#3b82f6"
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div
+              className="w-10 h-10 rounded-md border border-input"
+              style={{ backgroundColor: formData.color }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Choose a color for your workspace folder icon
+          </p>
         </div>
       </div>
 

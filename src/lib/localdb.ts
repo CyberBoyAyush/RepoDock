@@ -264,6 +264,7 @@ class LocalDB {
         id: `workspace_${Date.now()}`,
         name: 'Default Workspace',
         description: 'Your default workspace',
+        color: '#3b82f6', // Default blue color
         userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

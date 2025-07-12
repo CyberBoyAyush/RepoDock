@@ -5,13 +5,14 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Plus, Key, Eye, EyeOff, Copy, Edit, Trash2, Shield, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Key, Eye, EyeOff, Copy, Shield, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { EnvVariableModal } from '@/components/EnvVariableModal';
 import { useAuth } from '@/features/auth/useAuth';
 import { localDB } from '@/lib/localdb';
 import { encryptionService } from '@/lib/encryption';
-import { generateId, copyToClipboard } from '@/lib/utils';
+import { generateId, copyToClipboard, cn } from '@/lib/utils';
 import { EnvVariable } from '@/types';
 import { showErrorToast } from '@/components/ui/Toast';
 
@@ -21,6 +22,8 @@ export function GlobalEnv() {
   const [visibleValues, setVisibleValues] = useState<Set<string>>(new Set());
   const [editingVar, setEditingVar] = useState<EnvVariable | null>(null);
   const [keyVerificationStatus, setKeyVerificationStatus] = useState<'unknown' | 'verified' | 'failed'>('unknown');
+  const [selectedEnvVar, setSelectedEnvVar] = useState<EnvVariable | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const { user } = useAuth();
 
   // Load environment variables
@@ -86,8 +89,8 @@ export function GlobalEnv() {
     checkKeyVerification();
   }, [user]);
 
-  const getDecryptedValue = async (envVar: EnvVariable): Promise<void> => {
-    if (!user) return;
+  const getDecryptedValue = async (envVar: EnvVariable): Promise<string> => {
+    if (!user) throw new Error('User not authenticated');
 
     try {
       console.log('Attempting to decrypt env var:', { id: envVar.id, key: envVar.key, hasValue: !!envVar.value });
@@ -96,9 +99,11 @@ export function GlobalEnv() {
       setDecryptedValues(prev => ({ ...prev, [envVar.id]: decrypted }));
       // Reset error flag on successful decryption
       setDecryptionErrorShown(false);
+      return decrypted;
     } catch (error) {
       console.error('Decryption failed for env var:', envVar.key, error);
-      setDecryptedValues(prev => ({ ...prev, [envVar.id]: '[DECRYPTION_FAILED]' }));
+      const errorMessage = '[DECRYPTION_FAILED]';
+      setDecryptedValues(prev => ({ ...prev, [envVar.id]: errorMessage }));
 
       // Show error toast only once per session
       if (!decryptionErrorShown) {
@@ -108,6 +113,7 @@ export function GlobalEnv() {
           'Wrong encryption password or corrupted data. Please check your encryption password in Settings.'
         );
       }
+      throw error;
     }
   };
 
@@ -199,128 +205,146 @@ export function GlobalEnv() {
           )}
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">
-            Global Environment
-          </span>
+        {/* Enhanced Header */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center space-x-2">
+            <div className="w-1 h-4 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
+            <span className="text-sm font-semibold text-foreground">
+              Global Environment
+            </span>
+          </div>
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0"
+            className={cn(
+              'h-8 w-8 p-0 rounded-lg transition-all duration-200',
+              'hover:bg-emerald-500/10 hover:scale-110 active:scale-95',
+              'group'
+            )}
             onClick={() => setShowCreateModal(true)}
             title="Add Environment Variable"
           >
-            <Plus className="w-3 h-3" />
+            <Plus className="w-3.5 h-3.5 group-hover:text-emerald-600 transition-colors" />
           </Button>
         </div>
 
-        {/* Environment Variables List */}
-        <div className="space-y-1">
+        {/* Enhanced Environment Variables List */}
+        <div className="space-y-2">
           {envVars.length === 0 ? (
-            <div className="px-2 py-4 text-center">
-              <Key className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground mb-2">
-                No global environment variables
+            <div className="px-3 py-8 text-center">
+              <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Key className="w-6 h-6 text-emerald-600" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-4 font-medium">
+                No global variables yet
+              </p>
+              <p className="text-xs text-muted-foreground/80 mb-4 leading-relaxed">
+                Add environment variables that can be used across all projects
               </p>
               <Button
                 size="sm"
                 onClick={() => setShowCreateModal(true)}
-                className="h-6 text-xs"
+                className={cn(
+                  'h-8 text-xs rounded-lg transition-all duration-200',
+                  'bg-emerald-600 hover:bg-emerald-700 hover:scale-105 active:scale-95'
+                )}
               >
-                <Plus className="w-3 h-3 mr-1" />
+                <Plus className="w-3 h-3 mr-1.5" />
                 Add Variable
               </Button>
             </div>
           ) : (
-            envVars.map((envVar) => (
-              <div
-                key={envVar.id}
-                className="group p-3 rounded-md border border-border/50 hover:border-border transition-colors bg-card/50"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <Key className="w-3 h-3 text-primary flex-shrink-0" />
-                    <span className="text-xs font-semibold truncate">
-                      {envVar.key}
-                    </span>
+            <div className="grid grid-cols-1 gap-3">
+              {envVars.map((envVar) => (
+                <div
+                  key={envVar.id}
+                  className={cn(
+                    'group relative rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm p-3 sm:p-4',
+                    'hover:border-emerald-200/60 hover:bg-card/80 transition-all duration-200',
+                    'hover:shadow-sm hover:shadow-emerald-500/5 cursor-pointer overflow-hidden'
+                  )}
+                  onClick={() => {
+                    setSelectedEnvVar(envVar);
+                    setShowDetailsModal(true);
+                  }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2 min-w-0 flex-1">
+                      <div className="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Key className="w-3 h-3 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm font-semibold text-foreground block truncate">
+                          {envVar.key}
+                        </span>
+                      </div>
+                    </div>
+
                     {envVar.isSecret && (
-                      <div className="px-1 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded text-xs font-medium">
-                        Secret
+                      <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-md text-xs font-medium flex items-center flex-shrink-0">
+                        <Shield className="w-2.5 h-2.5" />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => toggleValueVisibility(envVar)}
-                      title={visibleValues.has(envVar.id) ? 'Hide value' : 'Show value'}
-                    >
-                      {visibleValues.has(envVar.id) ? (
-                        <EyeOff className="w-3 h-3" />
-                      ) : (
-                        <Eye className="w-3 h-3" />
-                      )}
-                    </Button>
+                  {/* Value Preview */}
+                  <div className="bg-muted/30 rounded-lg p-2 mb-2">
+                    <div className="flex items-center justify-between min-w-0">
+                      <span className="text-muted-foreground font-mono text-xs truncate flex-1 mr-2">
+                        {visibleValues.has(envVar.id)
+                          ? getDisplayValue(envVar)
+                          : '••••••••••••••••••••'
+                        }
+                      </span>
+                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleValueVisibility(envVar);
+                          }}
+                          className="p-1 hover:bg-emerald-500/10 rounded transition-colors"
+                          title={visibleValues.has(envVar.id) ? 'Hide value' : 'Show value'}
+                        >
+                          {visibleValues.has(envVar.id) ? (
+                            <EyeOff className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Eye className="w-3 h-3 text-emerald-600" />
+                          )}
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyValue(envVar);
+                          }}
+                          className="p-1 hover:bg-blue-500/10 rounded transition-colors"
+                          title="Copy value"
+                        >
+                          <Copy className="w-3 h-3 text-blue-600" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => handleCopyValue(envVar)}
-                      title="Copy value"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
+                  {/* Description */}
+                  {envVar.description && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {envVar.description}
+                    </p>
+                  )}
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => handleEditEnvVar(envVar)}
-                      title="Edit variable"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteEnvVar(envVar.id)}
-                      title="Delete variable"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                  {/* Click indicator */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
                   </div>
                 </div>
-
-                <div className="bg-muted/50 rounded p-2 mb-2">
-                  <div className="text-xs">
-                    {visibleValues.has(envVar.id) ? (
-                      <code className="bg-background px-1 py-0.5 rounded text-xs break-all font-mono">
-                        {getDisplayValue(envVar)}
-                      </code>
-                    ) : (
-                      <span className="text-muted-foreground font-mono">••••••••••••••••</span>
-                    )}
-                  </div>
-                </div>
-
-                {envVar.description && (
-                  <div className="text-xs text-muted-foreground italic">
-                    {envVar.description}
-                  </div>
-                )}
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>
 
+      {/* Create/Edit Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={handleModalClose}
@@ -341,6 +365,28 @@ export function GlobalEnv() {
           isGlobal={true}
         />
       </Modal>
+
+      {/* Details Modal */}
+      <EnvVariableModal
+        isOpen={showDetailsModal}
+        onClose={() => {
+          setShowDetailsModal(false);
+          setSelectedEnvVar(null);
+        }}
+        envVar={selectedEnvVar}
+        decryptedValue={selectedEnvVar ? decryptedValues[selectedEnvVar.id] : undefined}
+        onToggleVisibility={toggleValueVisibility}
+        onEdit={(envVar) => {
+          setShowDetailsModal(false);
+          handleEditEnvVar(envVar);
+        }}
+        onDelete={(envVarId) => {
+          setShowDetailsModal(false);
+          handleDeleteEnvVar(envVarId);
+        }}
+        onDecrypt={getDecryptedValue}
+        isVisible={selectedEnvVar ? visibleValues.has(selectedEnvVar.id) : false}
+      />
     </>
   );
 }

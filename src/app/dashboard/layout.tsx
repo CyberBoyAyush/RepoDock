@@ -10,7 +10,7 @@ import { useWorkspaces } from '@/features/workspaces/useWorkspaces';
 import { useProjects } from '@/features/projects/useProjects';
 import { Sidebar } from '@/components/Sidebar';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { Button } from '@/components/ui/Button';
+
 import { SearchModal } from '@/components/SearchModal';
 import { ProfileDropdown } from '@/components/ProfileDropdown';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -27,7 +27,21 @@ export default function DashboardLayout({
   const { loadProjects } = useProjects();
   const [showSearchModal, setShowSearchModal] = useState(false);
   const { modalState, handleSubmit, closeModal } = useEncryptionPasswordModal();
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const router = useRouter();
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     checkAuthStatus();
@@ -77,34 +91,52 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background">
       {/* Sidebar */}
-      <Sidebar />
+      <Sidebar
+        onWidthChange={setSidebarWidth}
+        onCollapseChange={setIsCollapsed}
+      />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Content - with dynamic left margin for fixed sidebar */}
+      <div
+        className="flex flex-col min-h-screen transition-all duration-300"
+        style={{
+          marginLeft: isDesktop ? `${isCollapsed ? 64 : sidebarWidth}px` : '0'
+        }}
+      >
         {/* Header */}
-        <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="h-16 px-6 flex items-center justify-between">
+        <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-30">
+          <div className="h-16 px-4 md:px-6 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <h1 className="text-lg font-semibold">
+              {/* Mobile spacing for menu button */}
+              <div className="w-8 md:w-0"></div>
+              <h1 className="text-lg font-semibold hidden md:block">
                 {currentWorkspace?.name || 'Dashboard'}
               </h1>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* Search Bar */}
+            <div className="flex items-center space-x-2 md:space-x-4">
+              {/* Search Bar - Hidden on small mobile, compact on medium */}
               <button
                 onClick={() => setShowSearchModal(true)}
-                className="flex items-center space-x-2 px-3 py-2 text-sm text-muted-foreground bg-muted/50 rounded-md hover:bg-muted transition-colors min-w-[200px] justify-start"
+                className="hidden sm:flex items-center space-x-2 px-3 py-2 text-sm text-muted-foreground bg-muted/50 rounded-md hover:bg-muted transition-colors min-w-[120px] md:min-w-[200px] justify-start"
               >
                 <Search className="w-4 h-4" />
-                <span>Search...</span>
+                <span className="hidden md:inline">Search...</span>
                 <div className="ml-auto flex items-center space-x-1">
                   <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-                    <span className="text-xs">{navigator?.platform?.includes('Mac') ? '⌘' : 'Ctrl'}</span>K
+                    <span className="text-xs">{typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') ? '⌘' : 'Ctrl'}</span>K
                   </kbd>
                 </div>
+              </button>
+
+              {/* Mobile search button */}
+              <button
+                onClick={() => setShowSearchModal(true)}
+                className="sm:hidden p-2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Search className="w-4 h-4" />
               </button>
 
               <ThemeToggle size="sm" />
