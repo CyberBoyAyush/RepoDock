@@ -3,8 +3,7 @@
 
 import { create } from 'zustand';
 import { Project, ProjectFormData } from '@/types';
-import { localDB } from '@/lib/localdb';
-import { generateId } from '@/lib/utils';
+import { dataCache, cacheUtils } from '@/lib/cache';
 
 interface ProjectState {
   projects: Project[];
@@ -18,7 +17,7 @@ interface ProjectState {
 }
 
 interface ProjectActions {
-  loadProjects: (workspaceId: string) => void;
+  loadProjects: (workspaceId: string) => Promise<void>;
   createProject: (data: ProjectFormData, workspaceId: string, userId: string) => Promise<Project>;
   updateProject: (id: string, data: Partial<ProjectFormData>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -46,16 +45,63 @@ export const useProjects = create<ProjectStore>((set, get) => ({
   filter: {},
 
   // Actions
-  loadProjects: (workspaceId: string) => {
+  loadProjects: async (workspaceId: string) => {
+    // Check cache first for immediate response
+    const cacheKey = cacheUtils.projectsKey(workspaceId);
+    const cachedProjects = dataCache.get<Project[]>(cacheKey);
+
+    if (cachedProjects) {
+      // Clear current project if it doesn't belong to this workspace
+      const currentProject = get().currentProject;
+      const validCurrentProject = currentProject &&
+        cachedProjects.find((p: Project) => p.id === currentProject.id) ? currentProject : null;
+
+      set({
+        projects: cachedProjects,
+        currentProject: validCurrentProject,
+        isLoading: false,
+      });
+
+      // Still fetch fresh data in background
+      fetch(`/api/projects?workspaceId=${workspaceId}`)
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(({ projects }) => {
+          // Update cache and state if data changed
+          if (JSON.stringify(projects) !== JSON.stringify(cachedProjects)) {
+            dataCache.set(cacheKey, projects);
+
+            const currentProject = get().currentProject;
+            const validCurrentProject = currentProject &&
+              projects.find((p: Project) => p.id === currentProject.id) ? currentProject : null;
+
+            set({ projects, currentProject: validCurrentProject });
+          }
+        })
+        .catch(() => {
+          // Background fetch failed, but we have cached data so it's okay
+        });
+
+      return; // Return early with cached data
+    }
+
+    // No cache, fetch normally
     set({ isLoading: true, error: null });
 
     try {
-      const projects = localDB.getWorkspaceProjects(workspaceId);
-      
+      const response = await fetch(`/api/projects?workspaceId=${workspaceId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+
+      const { projects } = await response.json();
+
+      // Cache the projects
+      dataCache.set(cacheKey, projects);
+
       // Clear current project if it doesn't belong to this workspace
       const currentProject = get().currentProject;
-      const validCurrentProject = currentProject && 
-        projects.find(p => p.id === currentProject.id) ? currentProject : null;
+      const validCurrentProject = currentProject &&
+        projects.find((p: Project) => p.id === currentProject.id) ? currentProject : null;
 
       set({
         projects,
@@ -71,36 +117,49 @@ export const useProjects = create<ProjectStore>((set, get) => ({
   },
 
   createProject: async (data: ProjectFormData, workspaceId: string, userId: string) => {
+    console.log('createProject called with:', { data, workspaceId, userId });
     set({ isLoading: true, error: null });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const newProject: Project = {
-        id: generateId('project'),
+      const projectData = {
         name: data.name,
         description: data.description || '',
         repository: data.repository || '',
         status: data.status || 'active',
         workspaceId,
-        userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
 
-      // Save to local database
-      localDB.createProject(newProject);
+      console.log('Sending project data to API:', projectData);
+
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      console.log('API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error('Failed to create project');
+      }
+
+      const { project } = await response.json();
+      console.log('Project created successfully:', project);
 
       // Update state
-      const projects = [...get().projects, newProject];
+      const projects = [...get().projects, project];
       set({
         projects,
         isLoading: false,
       });
 
-      return newProject;
+      return project;
     } catch (error) {
+      console.error('createProject error:', error);
       set({
         error: 'Failed to create project',
         isLoading: false,
@@ -116,8 +175,18 @@ export const useProjects = create<ProjectStore>((set, get) => ({
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Update in local database
-      localDB.updateProject(id, data);
+      // Update in database
+      const response = await fetch(`/api/projects/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update project');
+      }
 
       // Update state
       const projects = get().projects.map(project =>
@@ -153,8 +222,14 @@ export const useProjects = create<ProjectStore>((set, get) => ({
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Delete from local database
-      localDB.deleteProject(id);
+      // Delete from database
+      const response = await fetch(`/api/projects/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete project');
+      }
 
       // Update state
       const projects = get().projects.filter(p => p.id !== id);
@@ -212,29 +287,17 @@ export const useProjects = create<ProjectStore>((set, get) => ({
         throw new Error('Project not found');
       }
 
-      const duplicatedProject: Project = {
-        id: generateId('project'),
+      const duplicateData: ProjectFormData = {
         name: `${originalProject.name} (Copy)`,
         description: originalProject.description,
         repository: originalProject.repository,
         status: 'draft',
-        workspaceId: originalProject.workspaceId,
-        userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
 
-      // Save to local database
-      localDB.createProject(duplicatedProject);
+      // Use the createProject method which handles API calls
+      const createdProject = await get().createProject(duplicateData, originalProject.workspaceId, userId);
 
-      // Update state
-      const projects = [...get().projects, duplicatedProject];
-      set({
-        projects,
-        isLoading: false,
-      });
-
-      return duplicatedProject;
+      return createdProject;
     } catch (error) {
       set({
         error: 'Failed to duplicate project',

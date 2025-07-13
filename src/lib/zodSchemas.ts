@@ -5,11 +5,10 @@ import { z } from 'zod';
 
 // Auth schemas
 export const loginSchema = z.object({
-  username: z
+  email: z
     .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(50, 'Username must be less than 50 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
+    .email('Please enter a valid email address')
+    .max(100, 'Email must be less than 100 characters'),
   password: z
     .string()
     .min(6, 'Password must be at least 6 characters')
@@ -17,25 +16,25 @@ export const loginSchema = z.object({
 });
 
 export const signupSchema = z.object({
-  username: z
+  name: z
     .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(50, 'Username must be less than 50 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
+    .min(2, 'Name must be at least 2 characters')
+    .max(50, 'Name must be less than 50 characters'),
   email: z
     .string()
     .email('Please enter a valid email address')
     .max(100, 'Email must be less than 100 characters'),
   password: z
     .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(100, 'Password must be less than 100 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase letter, one uppercase letter, and one number'),
+    .min(6, 'Password must be at least 6 characters')
+    .max(100, 'Password must be less than 100 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+
 
 // Workspace schemas
 export const workspaceSchema = z.object({
@@ -54,7 +53,7 @@ export const workspaceSchema = z.object({
 export const workspaceUpdateSchema = workspaceSchema.partial();
 
 // Project schemas
-export const projectSchema = z.object({
+export const projectFormSchema = z.object({
   name: z
     .string()
     .min(1, 'Project name is required')
@@ -67,10 +66,13 @@ export const projectSchema = z.object({
     .or(z.literal('')),
   repository: z
     .string()
-    .url('Please enter a valid repository URL')
     .optional()
     .or(z.literal('')),
   status: z.enum(['active', 'archived', 'draft']).default('active'),
+});
+
+export const projectSchema = projectFormSchema.extend({
+  workspaceId: z.string().min(1, 'Workspace ID is required'),
 });
 
 export const projectUpdateSchema = projectSchema.partial();
@@ -81,8 +83,11 @@ export const envVariableSchema = z.object({
     .string()
     .min(1, 'Environment variable key is required')
     .max(100, 'Key must be less than 100 characters')
-    .regex(/^[A-Z][A-Z0-9_]*$/, 'Key must start with a letter and contain only uppercase letters, numbers, and underscores')
-    .trim(),
+    .trim()
+    .transform((val) => val.toUpperCase())
+    .refine((val) => /^[A-Z][A-Z0-9_]*$/.test(val), {
+      message: 'Key must start with a letter and contain only letters, numbers, and underscores'
+    }),
   value: z
     .string()
     .min(1, 'Environment variable value is required')
@@ -93,12 +98,13 @@ export const envVariableSchema = z.object({
     .optional()
     .or(z.literal('')),
   isSecret: z.boolean().default(false),
+  projectId: z.string().optional().nullable(), // Optional for global env variables
 });
 
 export const envVariableUpdateSchema = envVariableSchema.partial();
 
 // Task schemas
-export const taskSchema = z.object({
+export const taskFormSchema = z.object({
   title: z
     .string()
     .min(1, 'Task title is required')
@@ -118,9 +124,12 @@ export const taskSchema = z.object({
     .or(z.literal('')),
   dueDate: z
     .string()
-    .datetime('Please enter a valid date')
     .optional()
     .or(z.literal('')),
+});
+
+export const taskSchema = taskFormSchema.extend({
+  projectId: z.string().min(1, 'Project ID is required'),
 });
 
 export const taskUpdateSchema = taskSchema.partial();
@@ -224,9 +233,9 @@ export const exportSchema = z.object({
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 export type WorkspaceFormData = z.infer<typeof workspaceSchema>;
-export type ProjectFormData = z.infer<typeof projectSchema>;
+export type ProjectFormData = z.infer<typeof projectFormSchema>;
 export type EnvVariableFormData = z.infer<typeof envVariableSchema>;
-export type TaskFormData = z.infer<typeof taskSchema>;
+export type TaskFormData = z.infer<typeof taskFormSchema>;
 export type PullRequestFormData = z.infer<typeof pullRequestSchema>;
 export type IssueFormData = z.infer<typeof issueSchema>;
 export type SearchFormData = z.infer<typeof searchSchema>;

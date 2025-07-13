@@ -3,8 +3,6 @@
 
 import { create } from 'zustand';
 import { Task, TaskFormData } from '@/types';
-import { localDB } from '@/lib/localdb';
-import { generateId } from '@/lib/utils';
 
 interface TaskState {
   tasks: Task[];
@@ -19,7 +17,7 @@ interface TaskState {
 }
 
 interface TaskActions {
-  loadTasks: (projectId: string) => void;
+  loadTasks: (projectId: string) => Promise<void>;
   createTask: (data: TaskFormData, projectId: string, userId: string) => Promise<Task>;
   updateTask: (id: string, data: Partial<TaskFormData>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -43,14 +41,19 @@ export const useTasks = create<TaskStore>((set, get) => ({
   filter: {},
 
   // Actions
-  loadTasks: (projectId: string) => {
+  loadTasks: async (projectId: string) => {
     set({ isLoading: true, error: null });
 
     try {
-      const projectTasks = localDB.getProjectTasks(projectId);
+      const response = await fetch(`/api/tasks?projectId=${projectId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+
+      const { tasks } = await response.json();
 
       set({
-        tasks: projectTasks,
+        tasks,
         isLoading: false,
       });
     } catch (error) {
@@ -62,38 +65,51 @@ export const useTasks = create<TaskStore>((set, get) => ({
   },
 
   createTask: async (data: TaskFormData, projectId: string, userId: string) => {
+    console.log('createTask called with:', { data, projectId, userId });
     set({ isLoading: true, error: null });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const newTask: Task = {
-        id: generateId('task'),
+      const taskData = {
         title: data.title,
         description: data.description || '',
         status: data.status || 'todo',
         priority: data.priority || 'medium',
         projectId,
-        userId,
         assignedTo: data.assignedTo || '',
         dueDate: data.dueDate || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
 
-      // Save to local database
-      localDB.createTask(newTask);
+      console.log('Sending task data to API:', taskData);
+
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      console.log('API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
+        throw new Error('Failed to create task');
+      }
+
+      const { task } = await response.json();
+      console.log('Task created successfully:', task);
 
       // Update state
-      const tasks = [...get().tasks, newTask];
+      const tasks = [...get().tasks, task];
       set({
         tasks,
         isLoading: false,
       });
 
-      return newTask;
+      return task;
     } catch (error) {
+      console.error('createTask error:', error);
       set({
         error: 'Failed to create task',
         isLoading: false,
@@ -109,8 +125,18 @@ export const useTasks = create<TaskStore>((set, get) => ({
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Update in local database
-      localDB.updateTask(id, data);
+      // Update in database
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
 
       // Update state
       const tasks = get().tasks.map(task =>
@@ -139,8 +165,14 @@ export const useTasks = create<TaskStore>((set, get) => ({
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Delete from local database
-      localDB.deleteTask(id);
+      // Delete from database
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
 
       // Update state
       const tasks = get().tasks.filter(t => t.id !== id);

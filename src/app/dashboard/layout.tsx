@@ -10,7 +10,7 @@ import { useWorkspaces } from '@/features/workspaces/useWorkspaces';
 import { useProjects } from '@/features/projects/useProjects';
 import { Sidebar } from '@/components/Sidebar';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-
+import { AppPreloader } from '@/components/AppPreloader';
 import { SearchModal } from '@/components/SearchModal';
 import { ProfileDropdown } from '@/components/ProfileDropdown';
 import { ToastContainer } from '@/components/ui/Toast';
@@ -91,7 +91,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <AppPreloader>
+      <div className="min-h-screen bg-background">
       {/* Sidebar */}
       <Sidebar
         onWidthChange={setSidebarWidth}
@@ -169,5 +170,6 @@ export default function DashboardLayout({
         userEmail={modalState.userEmail}
       />
     </div>
+    </AppPreloader>
   );
 }

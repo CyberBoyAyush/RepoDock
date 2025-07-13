@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/features/auth/useAuth';
 import { useTasks } from '@/features/tasks/useTasks';
-import { taskSchema, type TaskFormData } from '@/lib/zodSchemas';
+import { taskFormSchema, type TaskFormData } from '@/lib/zodSchemas';
 import { Task } from '@/types';
 import { Calendar, User, Flag } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export function TaskForm({ task, projectId, onSuccess, onCancel }: TaskFormProps
   const isEditing = !!task;
 
   const validateForm = () => {
-    const result = taskSchema.safeParse(formData);
+    const result = taskFormSchema.safeParse(formData);
     
     if (!result.success) {
       const newErrors: Record<string, string> = {};
@@ -58,16 +58,30 @@ export function TaskForm({ task, projectId, onSuccess, onCancel }: TaskFormProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm() || !user) return;
+
+    console.log('Task form submitted with data:', formData);
+    console.log('Project ID:', projectId);
+    console.log('User:', user);
+
+    if (!validateForm()) {
+      console.log('Task form validation failed');
+      return;
+    }
+
+    if (!user) {
+      console.log('No user found for task creation');
+      return;
+    }
 
     try {
+      console.log('Attempting to create/update task...');
       if (isEditing && task) {
         await updateTask(task.id, formData);
       } else {
         await createTask(formData, projectId, user.id);
       }
-      
+
+      console.log('Task created/updated successfully');
       onSuccess?.();
     } catch (error) {
       console.error('Task form error:', error);

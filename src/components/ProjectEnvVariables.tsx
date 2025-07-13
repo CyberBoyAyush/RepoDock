@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { useAuth } from '@/features/auth/useAuth';
-import { localDB } from '@/lib/localdb';
+
 import { encryptionService } from '@/lib/encryption';
-import { generateId, copyToClipboard } from '@/lib/utils';
+import { copyToClipboard } from '@/lib/utils';
 import { EnvVariable } from '@/types';
 import { showErrorToast } from '@/components/ui/Toast';
 
@@ -32,10 +32,21 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
 
   // Load environment variables
   React.useEffect(() => {
-    if (user && projectId) {
-      const projectEnvVars = localDB.getProjectEnvVariables(projectId);
-      setEnvVars(projectEnvVars);
-    }
+    const loadEnvVars = async () => {
+      if (user && projectId) {
+        try {
+          const response = await fetch(`/api/env-variables?projectId=${projectId}`);
+          if (response.ok) {
+            const { envVariables } = await response.json();
+            setEnvVars(envVariables);
+          }
+        } catch (error) {
+          console.error('Failed to load project environment variables:', error);
+        }
+      }
+    };
+
+    loadEnvVars();
   }, [user, projectId]);
 
   // Check key verification status
@@ -145,10 +156,19 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
     }
   };
 
-  const handleDeleteEnvVar = (id: string) => {
+  const handleDeleteEnvVar = async (id: string) => {
     if (confirm('Are you sure you want to delete this environment variable?')) {
-      localDB.deleteEnvVariable(id);
-      setEnvVars(prev => prev.filter(env => env.id !== id));
+      try {
+        const response = await fetch(`/api/env-variables/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setEnvVars(prev => prev.filter(env => env.id !== id));
+        }
+      } catch (error) {
+        console.error('Failed to delete environment variable:', error);
+      }
     }
   };
 
@@ -162,12 +182,19 @@ export function ProjectEnvVariables({ projectId }: ProjectEnvVariablesProps) {
     setEditingVar(null);
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = async () => {
     handleModalClose();
     // Reload env vars
     if (user && projectId) {
-      const projectEnvVars = localDB.getProjectEnvVariables(projectId);
-      setEnvVars(projectEnvVars);
+      try {
+        const response = await fetch(`/api/env-variables?projectId=${projectId}`);
+        if (response.ok) {
+          const { envVariables } = await response.json();
+          setEnvVars(envVariables);
+        }
+      } catch (error) {
+        console.error('Failed to reload project environment variables:', error);
+      }
     }
   };
 
@@ -434,24 +461,40 @@ function ProjectEnvVariableForm({
           updates.value = await encryptionService.encryptEnvValueWithUser(formData.value, user.email);
         }
 
-        localDB.updateEnvVariable(envVar.id, updates);
+        const response = await fetch(`/api/env-variables/${envVar.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updates),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update environment variable');
+        }
       } else {
         // Create new variable
         const encryptedValue = await encryptionService.encryptEnvValueWithUser(formData.value, user.email);
 
-        const newEnvVar: EnvVariable = {
-          id: generateId('env'),
+        const newEnvVarData = {
           key: formData.key,
           value: encryptedValue,
           description: formData.description,
           isSecret: formData.isSecret,
           projectId: projectId,
-          userId: user.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         };
 
-        localDB.createEnvVariable(newEnvVar);
+        const response = await fetch('/api/env-variables', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newEnvVarData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create environment variable');
+        }
       }
       
       onSuccess();

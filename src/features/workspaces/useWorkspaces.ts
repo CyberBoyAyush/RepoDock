@@ -3,8 +3,7 @@
 
 import { create } from 'zustand';
 import { Workspace, WorkspaceFormData } from '@/types';
-import { localDB } from '@/lib/localdb';
-import { generateId } from '@/lib/utils';
+import { dataCache, cacheUtils } from '@/lib/cache';
 
 interface WorkspaceState {
   workspaces: Workspace[];
@@ -14,7 +13,7 @@ interface WorkspaceState {
 }
 
 interface WorkspaceActions {
-  loadWorkspaces: (userId: string) => void;
+  loadWorkspaces: (userId: string) => Promise<void>;
   createWorkspace: (data: WorkspaceFormData, userId: string) => Promise<Workspace>;
   updateWorkspace: (id: string, data: Partial<WorkspaceFormData>) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
@@ -36,16 +35,65 @@ export const useWorkspaces = create<WorkspaceStore>((set, get) => ({
   error: null,
 
   // Actions
-  loadWorkspaces: (userId: string) => {
+  loadWorkspaces: async (userId: string) => {
+    // Check cache first for immediate response
+    const cacheKey = cacheUtils.workspacesKey(userId);
+    const cachedWorkspaces = dataCache.get<Workspace[]>(cacheKey);
+
+    if (cachedWorkspaces) {
+      // Set default workspace if none is current
+      let currentWorkspace = get().currentWorkspace;
+      if (!currentWorkspace && cachedWorkspaces.length > 0) {
+        currentWorkspace = cachedWorkspaces.find((w: Workspace) => w.isDefault) || cachedWorkspaces[0];
+      }
+
+      set({
+        workspaces: cachedWorkspaces,
+        currentWorkspace,
+        isLoading: false,
+      });
+
+      // Still fetch fresh data in background
+      fetch('/api/workspaces')
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(({ workspaces }) => {
+          // Update cache and state if data changed
+          if (JSON.stringify(workspaces) !== JSON.stringify(cachedWorkspaces)) {
+            dataCache.set(cacheKey, workspaces);
+
+            let currentWorkspace = get().currentWorkspace;
+            if (!currentWorkspace && workspaces.length > 0) {
+              currentWorkspace = workspaces.find((w: Workspace) => w.isDefault) || workspaces[0];
+            }
+
+            set({ workspaces, currentWorkspace });
+          }
+        })
+        .catch(() => {
+          // Background fetch failed, but we have cached data so it's okay
+        });
+
+      return; // Return early with cached data
+    }
+
+    // No cache, fetch normally
     set({ isLoading: true, error: null });
 
     try {
-      const workspaces = localDB.getUserWorkspaces(userId);
-      
+      const response = await fetch('/api/workspaces');
+      if (!response.ok) {
+        throw new Error('Failed to fetch workspaces');
+      }
+
+      const { workspaces } = await response.json();
+
+      // Cache the workspaces
+      dataCache.set(cacheKey, workspaces);
+
       // Set default workspace if none is current
       let currentWorkspace = get().currentWorkspace;
       if (!currentWorkspace && workspaces.length > 0) {
-        currentWorkspace = workspaces.find(w => w.isDefault) || workspaces[0];
+        currentWorkspace = workspaces.find((w: Workspace) => w.isDefault) || workspaces[0];
       }
 
       set({
@@ -65,31 +113,33 @@ export const useWorkspaces = create<WorkspaceStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      const newWorkspace: Workspace = {
-        id: generateId('workspace'),
-        name: data.name,
-        description: data.description || '',
-        color: data.color || '#3b82f6',
-        userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDefault: false,
-      };
+      if (!response.ok) {
+        throw new Error('Failed to create workspace');
+      }
 
-      // Save to local database
-      localDB.createWorkspace(newWorkspace);
+      const { workspace } = await response.json();
+
+      // Update cache
+      const cacheKey = cacheUtils.workspacesKey(userId);
+      const cachedWorkspaces = dataCache.get<Workspace[]>(cacheKey) || [];
+      dataCache.set(cacheKey, [...cachedWorkspaces, workspace]);
 
       // Update state
-      const workspaces = [...get().workspaces, newWorkspace];
+      const workspaces = [...get().workspaces, workspace];
       set({
         workspaces,
         isLoading: false,
       });
 
-      return newWorkspace;
+      return workspace;
     } catch (error) {
       set({
         error: 'Failed to create workspace',
@@ -103,11 +153,17 @@ export const useWorkspaces = create<WorkspaceStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await fetch(`/api/workspaces/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
 
-      // Update in local database
-      localDB.updateWorkspace(id, data);
+      if (!response.ok) {
+        throw new Error('Failed to update workspace');
+      }
 
       // Update state
       const workspaces = get().workspaces.map(workspace =>
@@ -154,8 +210,14 @@ export const useWorkspaces = create<WorkspaceStore>((set, get) => ({
         throw new Error('Cannot delete the last workspace');
       }
 
-      // Delete from local database
-      localDB.deleteWorkspace(id);
+      // Delete from database
+      const response = await fetch(`/api/workspaces/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete workspace');
+      }
 
       // Update state
       const updatedWorkspaces = workspaces.filter(w => w.id !== id);
@@ -215,28 +277,16 @@ export const useWorkspaces = create<WorkspaceStore>((set, get) => ({
         throw new Error('Workspace not found');
       }
 
-      const duplicatedWorkspace: Workspace = {
-        id: generateId('workspace'),
+      const duplicateData = {
         name: `${originalWorkspace.name} (Copy)`,
         description: originalWorkspace.description,
         color: originalWorkspace.color,
-        userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isDefault: false,
       };
 
-      // Save to local database
-      localDB.createWorkspace(duplicatedWorkspace);
+      // Use the createWorkspace method which handles API calls
+      const createdWorkspace = await get().createWorkspace(duplicateData, userId);
 
-      // Update state
-      const workspaces = [...get().workspaces, duplicatedWorkspace];
-      set({
-        workspaces,
-        isLoading: false,
-      });
-
-      return duplicatedWorkspace;
+      return createdWorkspace;
     } catch (error) {
       set({
         error: 'Failed to duplicate workspace',

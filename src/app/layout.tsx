@@ -3,6 +3,7 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
+import { RootAuthProvider } from '@/components/RootAuthProvider';
 
 export const metadata: Metadata = {
   title: "RepoDock - AI Powered Workspace for Developers",
@@ -60,7 +61,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
-        {children}
+        <RootAuthProvider>
+          {children}
+        </RootAuthProvider>
       </body>
     </html>
   );

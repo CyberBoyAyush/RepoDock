@@ -3,8 +3,10 @@
 
 export interface User {
   id: string;
-  username: string;
+  name: string;
   email: string;
+  emailVerified: boolean;
+  image?: string;
   encryptionPassword?: string; // Optional encryption password for env variables
   createdAt: string;
   updatedAt: string;
@@ -94,12 +96,12 @@ export interface AuthState {
 }
 
 export interface LoginCredentials {
-  username: string;
+  email: string;
   password: string;
 }
 
 export interface SignupCredentials {
-  username: string;
+  name: string;
   email: string;
   password: string;
   confirmPassword: string;

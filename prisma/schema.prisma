@@ -25,6 +25,14 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // Application relations
+  workspaces    Workspace[]
+  projects      Project[]
+  envVariables  EnvVariable[]
+  tasks         Task[]
+  pullRequests  PullRequest[]
+  issues        Issue[]
+
   @@unique([email])
   @@map("user")
 }
@@ -72,4 +80,114 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+}
+
+// Application Data Models
+
+model Workspace {
+  id          String    @id
+  name        String
+  description String?
+  color       String?   // Hex color for workspace folder
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isDefault   Boolean   @default(false)
+
+  // Relations
+  projects    Project[]
+
+  @@map("workspace")
+}
+
+model Project {
+  id          String    @id
+  name        String
+  description String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repository  String?
+  status      String    @default("active") // 'active' | 'archived' | 'draft'
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  envVariables EnvVariable[]
+  tasks        Task[]
+  pullRequests PullRequest[]
+  issues       Issue[]
+
+  @@map("project")
+}
+
+model EnvVariable {
+  id          String   @id
+  key         String
+  value       String   // Encrypted value
+  description String?
+  isSecret    Boolean  @default(true)
+  projectId   String?  // If null, it's a global env variable
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("env_variable")
+}
+
+model Task {
+  id          String   @id
+  title       String
+  description String?
+  status      String   @default("todo") // 'todo' | 'in-progress' | 'done' | 'cancelled'
+  priority    String   @default("medium") // 'low' | 'medium' | 'high' | 'urgent'
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedTo  String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("task")
+}
+
+model PullRequest {
+  id          String   @id
+  title       String
+  description String?
+  status      String   @default("open") // 'open' | 'closed' | 'merged'
+  url         String?
+  number      Int?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pull_request")
+}
+
+model Issue {
+  id          String   @id
+  title       String
+  description String?
+  status      String   @default("open") // 'open' | 'closed'
+  priority    String   @default("medium") // 'low' | 'medium' | 'high' | 'urgent'
+  url         String?
+  number      Int?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("issue")
 }

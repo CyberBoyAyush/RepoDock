@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/features/auth/useAuth';
 import { useProjects } from '@/features/projects/useProjects';
 import { useWorkspaces } from '@/features/workspaces/useWorkspaces';
-import { projectSchema, type ProjectFormData } from '@/lib/zodSchemas';
+import { projectFormSchema, type ProjectFormData } from '@/lib/zodSchemas';
 import { Project } from '@/types';
 
 interface ProjectFormProps {
@@ -34,7 +34,7 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
   const isEditing = !!project;
 
   const validateForm = () => {
-    const result = projectSchema.safeParse(formData);
+    const result = projectFormSchema.safeParse(formData);
 
     if (!result.success) {
       const newErrors: Record<string, string> = {};
@@ -55,16 +55,35 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm() || !user || !currentWorkspace) return;
+
+    console.log('Form submitted with data:', formData);
+    console.log('User:', user);
+    console.log('Current workspace:', currentWorkspace);
+
+    if (!validateForm()) {
+      console.log('Form validation failed');
+      return;
+    }
+
+    if (!user) {
+      console.log('No user found');
+      return;
+    }
+
+    if (!currentWorkspace) {
+      console.log('No current workspace found');
+      return;
+    }
 
     try {
+      console.log('Attempting to create/update project...');
       if (isEditing && project) {
         await updateProject(project.id, formData);
       } else {
         await createProject(formData, currentWorkspace.id, user.id);
       }
-      
+
+      console.log('Project created/updated successfully');
       onSuccess?.();
     } catch (error) {
       console.error('Project form error:', error);
