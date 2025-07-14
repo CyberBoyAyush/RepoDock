@@ -22,7 +22,7 @@ interface AuthActions {
   logout: () => Promise<void>;
   clearError: () => void;
   setLoading: (loading: boolean) => void;
-  updateUser: (updates: Partial<User>) => void;
+  updateUser: (updates: Partial<User>) => Promise<boolean>;
   validateSession: () => Promise<boolean>;
   checkAuthStatus: () => Promise<void>;
 }
@@ -283,19 +283,50 @@ export const useAuth = create<AuthStore>()((set, get) => ({
     set({ isLoading: loading });
   },
 
-  updateUser: (updates: Partial<User>) => {
+  updateUser: async (updates: Partial<User>) => {
     const { user } = get();
-    if (!user) return;
+    if (!user) return false;
 
-    const updatedUser = {
-      ...user,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
+    set({ isLoading: true, error: null });
 
-    set({ user: updatedUser });
-    // Note: User updates should be handled through better-auth APIs
-    // This is just for local state management
+    try {
+      console.log('Updating user profile...', updates);
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+
+      const { user: updatedUser } = await response.json();
+      console.log('Profile updated successfully:', updatedUser);
+
+      // Update local state with the response from server
+      set({
+        user: updatedUser,
+        isLoading: false,
+        error: null,
+      });
+
+      // Update cache
+      authCache.set('current_user', updatedUser);
+
+      return true;
+    } catch (error) {
+      console.error('Failed to update user profile:', error);
+      set({
+        error: error instanceof Error ? error.message : 'Failed to update profile',
+        isLoading: false,
+      });
+      return false;
+    }
   },
 
   // Validate current session

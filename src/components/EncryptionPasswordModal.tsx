@@ -99,14 +99,14 @@ export function EncryptionPasswordModal({
         </div>
 
         {/* Security notice */}
-        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="bg-blue-100/80 dark:bg-blue-950/20 border border-blue-300 dark:border-blue-800 rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <Shield className="w-5 h-5 text-blue-700 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200">
                 Security Notice
               </h4>
-              <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
                 <p>• We <strong>do not store</strong> encryption passwords on servers</p>
                 <p>• Your password is stored in your local browser only</p>
                 <p>• <strong>Do not forget it</strong> - lost passwords cannot be recovered</p>
@@ -117,10 +117,10 @@ export function EncryptionPasswordModal({
         </div>
 
         {/* Warning for password loss */}
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+        <div className="bg-yellow-100/80 dark:bg-yellow-950/20 border border-yellow-300 dark:border-yellow-800 rounded-lg p-3">
           <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-            <p className="text-xs text-yellow-700 dark:text-yellow-300">
+            <AlertTriangle className="w-4 h-4 text-yellow-700 dark:text-yellow-400" />
+            <p className="text-xs text-yellow-800 dark:text-yellow-300">
               <strong>Important:</strong> If you forget this password, your encrypted data cannot be recovered.
             </p>
           </div>

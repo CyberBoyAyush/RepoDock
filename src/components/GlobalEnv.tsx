@@ -5,7 +5,7 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { Plus, Key, Eye, EyeOff, Copy, Shield, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Key, Eye, EyeOff, Copy, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { EnvVariableModal } from '@/components/EnvVariableModal';
@@ -181,35 +181,29 @@ export function GlobalEnv() {
   return (
     <>
       <div className="space-y-2">
-        {/* Key Verification Status */}
-        <div className="flex items-center justify-between p-2 rounded-md border border-border/50 bg-card/30">
-          <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 rounded-full ${
+        {/* Minimal Key Verification Status */}
+        <div className="flex items-center justify-between p-2 rounded border border-border/20 bg-muted/30">
+          <div className="flex items-center space-x-1.5">
+            <div className={`w-1.5 h-1.5 rounded-full ${
               keyVerificationStatus === 'verified'
                 ? 'bg-green-500'
                 : keyVerificationStatus === 'failed'
                 ? 'bg-red-500'
                 : 'bg-yellow-500'
             }`} />
-            <span className="text-xs font-medium">
+            <span className="text-xs">
               {keyVerificationStatus === 'verified'
-                ? 'Encryption Key Verified'
+                ? 'Key verified'
                 : keyVerificationStatus === 'failed'
-                ? 'Encryption Key Not Set'
-                : 'Checking Encryption Key...'}
+                ? 'Key not set'
+                : 'Checking...'}
             </span>
-            {keyVerificationStatus === 'verified' && (
-              <CheckCircle className="w-3 h-3 text-green-500" />
-            )}
-            {keyVerificationStatus === 'failed' && (
-              <AlertCircle className="w-3 h-3 text-red-500" />
-            )}
           </div>
           {keyVerificationStatus === 'failed' && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs text-red-600 hover:text-red-700"
+              className="h-5 text-xs text-red-600 hover:text-red-700 px-1"
               onClick={() => {
                 // Clear stored password to force re-entry
                 if (user) {
@@ -219,143 +213,116 @@ export function GlobalEnv() {
               }}
               title="Set up encryption key"
             >
-              <Shield className="w-3 h-3 mr-1" />
               Setup
             </Button>
           )}
         </div>
 
-        {/* Enhanced Header */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center space-x-2">
-            <div className="w-1 h-4 bg-gradient-to-b from-emerald-500 to-emerald-600 rounded-full"></div>
-            <span className="text-sm font-semibold text-foreground">
-              Global Environment
-            </span>
-          </div>
+        {/* Minimal Header */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Global Environment
+          </span>
           <Button
             variant="ghost"
             size="sm"
             className={cn(
-              'h-8 w-8 p-0 rounded-lg transition-all duration-200',
-              'hover:bg-emerald-500/10 hover:scale-110 active:scale-95',
-              'group'
+              'h-6 w-6 p-0 rounded transition-colors duration-150',
+              'hover:bg-accent text-muted-foreground hover:text-foreground'
             )}
             onClick={() => setShowCreateModal(true)}
             title="Add Environment Variable"
           >
-            <Plus className="w-3.5 h-3.5 group-hover:text-emerald-600 transition-colors" />
+            <Plus className="w-3 h-3" />
           </Button>
         </div>
 
-        {/* Enhanced Environment Variables List */}
-        <div className="space-y-2">
+        {/* Minimal Environment Variables List */}
+        <div className="space-y-1.5">
           {envVars.length === 0 ? (
-            <div className="px-3 py-8 text-center">
-              <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Key className="w-6 h-6 text-emerald-600" />
+            <div className="px-2 py-6 text-center">
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center mx-auto mb-2">
+                <Key className="w-5 h-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground mb-4 font-medium">
+              <p className="text-sm text-muted-foreground mb-3">
                 No global variables yet
-              </p>
-              <p className="text-xs text-muted-foreground/80 mb-4 leading-relaxed">
-                Add environment variables that can be used across all projects
               </p>
               <Button
                 size="sm"
                 onClick={() => setShowCreateModal(true)}
-                className={cn(
-                  'h-8 text-xs rounded-lg transition-all duration-200',
-                  'bg-emerald-600 hover:bg-emerald-700 hover:scale-105 active:scale-95'
-                )}
+                className="h-7 text-xs rounded"
               >
-                <Plus className="w-3 h-3 mr-1.5" />
+                <Plus className="w-3 h-3 mr-1" />
                 Add Variable
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1">
               {envVars.map((envVar) => (
                 <div
                   key={envVar.id}
                   className={cn(
-                    'group relative rounded-xl border border-border/30 bg-card/50 backdrop-blur-sm p-3 sm:p-4',
-                    'hover:border-emerald-200/60 hover:bg-card/80 transition-all duration-200',
-                    'hover:shadow-sm hover:shadow-emerald-500/5 cursor-pointer overflow-hidden'
+                    'group relative rounded-lg border border-border/30 p-2.5',
+                    'hover:border-border/50 hover:bg-accent/30 transition-colors duration-150',
+                    'shadow-sm shadow-black/5 dark:shadow-none hover:shadow-md dark:hover:shadow-none',
+                    'cursor-pointer'
                   )}
                   onClick={() => {
                     setSelectedEnvVar(envVar);
                     setShowDetailsModal(true);
                   }}
                 >
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <div className="w-6 h-6 bg-emerald-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Key className="w-3 h-3 text-emerald-600" />
+                      <div className="w-4 h-4 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                        <Key className="w-2.5 h-2.5 text-muted-foreground" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="text-sm font-semibold text-foreground block truncate">
-                          {envVar.key}
-                        </span>
-                      </div>
-                    </div>
-
-                    {envVar.isSecret && (
-                      <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 rounded-md text-xs font-medium flex items-center flex-shrink-0">
-                        <Shield className="w-2.5 h-2.5" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Value Preview */}
-                  <div className="bg-muted/30 rounded-lg p-2 mb-2">
-                    <div className="flex items-center justify-between min-w-0">
-                      <span className="text-muted-foreground font-mono text-xs truncate flex-1 mr-2">
-                        {visibleValues.has(envVar.id)
-                          ? getDisplayValue(envVar)
-                          : '••••••••••••••••••••'
-                        }
-                      </span>
-                      <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleValueVisibility(envVar);
-                          }}
-                          className="p-1 hover:bg-emerald-500/10 rounded transition-colors"
-                          title={visibleValues.has(envVar.id) ? 'Hide value' : 'Show value'}
-                        >
-                          {visibleValues.has(envVar.id) ? (
-                            <EyeOff className="w-3 h-3 text-emerald-600" />
-                          ) : (
-                            <Eye className="w-3 h-3 text-emerald-600" />
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {envVar.key}
+                          </span>
+                          {envVar.isSecret && (
+                            <Shield className="w-3 h-3 text-amber-500 flex-shrink-0" />
                           )}
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyValue(envVar);
-                          }}
-                          className="p-1 hover:bg-blue-500/10 rounded transition-colors"
-                          title="Copy value"
-                        >
-                          <Copy className="w-3 h-3 text-blue-600" />
-                        </button>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <span className="text-xs font-mono text-muted-foreground truncate flex-1">
+                            {visibleValues.has(envVar.id)
+                              ? getDisplayValue(envVar)
+                              : '••••••••'
+                            }
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Description */}
-                  {envVar.description && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {envVar.description}
-                    </p>
-                  )}
-
-                  {/* Click indicator */}
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleValueVisibility(envVar);
+                        }}
+                        className="p-1 hover:bg-accent rounded transition-colors"
+                        title={visibleValues.has(envVar.id) ? 'Hide value' : 'Show value'}
+                      >
+                        {visibleValues.has(envVar.id) ? (
+                          <EyeOff className="w-3 h-3 text-muted-foreground" />
+                        ) : (
+                          <Eye className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyValue(envVar);
+                        }}
+                        className="p-1 hover:bg-accent rounded transition-colors"
+                        title="Copy value"
+                      >
+                        <Copy className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

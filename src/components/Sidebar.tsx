@@ -27,7 +27,7 @@ interface SidebarProps {
 export function Sidebar({ onWidthChange, onCollapseChange }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(256); // Default width in pixels
+  const [sidebarWidth, setSidebarWidth] = useState(240); // Default width in pixels
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -81,11 +81,11 @@ export function Sidebar({ onWidthChange, onCollapseChange }: SidebarProps) {
     };
   }, [isResizing, onWidthChange]);
 
-  // Mobile overlay backdrop with enhanced blur effect
+  // Mobile overlay backdrop
   const MobileBackdrop = () => (
     <div
       className={cn(
-        'fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden transition-all duration-300',
+        'fixed inset-0 bg-black/40 z-40 md:hidden transition-opacity duration-200',
         isMobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
       )}
       onClick={() => setIsMobileOpen(false)}
@@ -94,15 +94,15 @@ export function Sidebar({ onWidthChange, onCollapseChange }: SidebarProps) {
 
   return (
     <>
-      {/* Enhanced Mobile Menu Button */}
+      {/* Minimal Mobile Menu Button */}
       <Button
         variant="ghost"
         size="sm"
         className={cn(
-          'fixed top-4 left-4 z-[60] md:hidden h-10 w-10 p-0 rounded-xl',
-          'bg-background/80 backdrop-blur-md border border-border/50',
-          'hover:bg-background/90 hover:border-border transition-all duration-200',
-          'shadow-lg shadow-black/5'
+          'fixed top-4 left-4 z-[60] md:hidden h-9 w-9 p-0 rounded-lg',
+          'bg-background/95 backdrop-blur-sm border border-border/40',
+          'hover:bg-accent shadow-sm shadow-black/5 dark:shadow-none',
+          'transition-colors duration-150'
         )}
         onClick={() => setIsMobileOpen(!isMobileOpen)}
       >
@@ -114,69 +114,63 @@ export function Sidebar({ onWidthChange, onCollapseChange }: SidebarProps) {
       <div
         ref={sidebarRef}
         className={cn(
-          // Base styles with enhanced background
-          'bg-background/95 backdrop-blur-xl border-r border-border/30 flex flex-col',
-          'transition-all duration-300 ease-in-out',
-          // Enhanced shadow and border
-          'shadow-xl shadow-black/5 dark:shadow-black/20',
+          // Base styles - enhanced for light mode
+          'bg-background/95 backdrop-blur-sm border-r border-border/30 flex flex-col',
+          'transition-all duration-200 ease-out',
+          // Light mode enhancement
+          'shadow-sm shadow-black/5 dark:shadow-none',
           // Desktop styles - fixed positioning for full height
           'md:fixed md:left-0 md:top-0 md:h-screen md:z-40',
-          isCollapsed ? 'w-16' : '',
+          isCollapsed ? 'w-14' : '',
           // Mobile styles - full overlay with proper z-index
           'fixed left-0 top-0 h-screen z-50',
-          'w-80 md:w-auto', // Fixed width on mobile, auto on desktop
+          'w-72 md:w-auto', // Slightly narrower on mobile
           // Show/hide logic for mobile and desktop
           isMobileOpen ? 'flex md:flex' : 'hidden md:flex',
-          // Enhanced transform for mobile slide animation
+          // Transform for mobile slide animation
           isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         )}
         style={{
-          width: isCollapsed ? '64px' : `${sidebarWidth}px`,
+          width: isCollapsed ? '56px' : `${sidebarWidth}px`,
         }}
-        data-mobile-width="320px"
+        data-mobile-width="288px"
       >
-        {/* Enhanced Resize Handle */}
+        {/* Minimal Resize Handle */}
         {!isCollapsed && (
           <div
             className={cn(
-              'absolute right-0 top-0 w-1 h-full cursor-col-resize transition-all duration-200 hidden md:block',
-              'hover:w-1.5 hover:bg-primary/30 active:bg-primary/50',
-              'before:absolute before:right-0 before:top-0 before:w-3 before:h-full before:-translate-x-1'
+              'absolute right-0 top-0 w-0.5 h-full cursor-col-resize transition-colors duration-150 hidden md:block',
+              'hover:w-1 hover:bg-border',
+              'before:absolute before:right-0 before:top-0 before:w-2 before:h-full before:-translate-x-0.5'
             )}
             onMouseDown={handleMouseDown}
           />
         )}
 
-        {/* Enhanced Header */}
-        <div className="px-4 py-5 border-b border-border/20">
+        {/* Minimal Header */}
+        <div className="px-4 py-4 border-b border-border/20">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <button
                 onClick={() => router.push('/dashboard')}
                 className={cn(
-                  'flex items-center space-x-3 group transition-all duration-200',
-                  'hover:scale-[1.02] active:scale-[0.98]'
+                  'flex items-center space-x-2.5 group transition-colors duration-150'
                 )}
               >
                 <div className={cn(
-                  'w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-xl',
-                  'flex items-center justify-center shadow-lg shadow-primary/25',
-                  'group-hover:shadow-xl group-hover:shadow-primary/30 transition-all duration-200'
+                  'w-6 h-6 bg-primary rounded-lg flex items-center justify-center'
                 )}>
-                  <WorkspaceIcon className="w-4 h-4 text-primary-foreground" />
+                  <WorkspaceIcon className="w-3.5 h-3.5 text-primary-foreground" />
                 </div>
                 <div className="flex flex-col items-start">
-                  <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
                     RepoDock
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Project Manager
                   </span>
                 </div>
               </button>
             )}
 
-            {/* Enhanced Collapse Button */}
+            {/* Minimal Collapse Button */}
             <Button
               variant="ghost"
               size="sm"
@@ -186,78 +180,73 @@ export function Sidebar({ onWidthChange, onCollapseChange }: SidebarProps) {
                 onCollapseChange?.(newCollapsed);
               }}
               className={cn(
-                'h-9 w-9 p-0 hidden md:flex rounded-xl',
-                'hover:bg-accent/80 hover:scale-105 active:scale-95',
-                'transition-all duration-200'
+                'h-8 w-8 p-0 hidden md:flex rounded-lg',
+                'hover:bg-accent transition-colors duration-150'
               )}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isCollapsed ? (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               ) : (
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               )}
             </Button>
 
-            {/* Enhanced Mobile close button */}
+            {/* Minimal Mobile close button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsMobileOpen(false)}
               className={cn(
-                'h-9 w-9 p-0 md:hidden rounded-xl',
-                'hover:bg-accent/80 transition-all duration-200'
+                'h-8 w-8 p-0 md:hidden rounded-lg',
+                'hover:bg-accent transition-colors duration-150'
               )}
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Enhanced Navigation */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div className="px-3 py-4 space-y-6">
+        {/* Minimal Navigation */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="px-3 py-3 space-y-4">
             {/* Workspace Toggle Section */}
-            <div className="space-y-2">
+            <div>
               <WorkspaceToggle isCollapsed={isCollapsed} />
             </div>
 
             {/* Project List Section */}
             {!isCollapsed && (
-              <div className="space-y-2">
+              <div>
                 <ProjectList />
               </div>
             )}
 
             {/* Global Environment Section */}
             {!isCollapsed && (
-              <div className="space-y-2">
+              <div>
                 <GlobalEnv />
               </div>
             )}
           </div>
         </div>
 
-        {/* Enhanced Footer */}
-        <div className="px-3 py-4 border-t border-border/20 bg-muted/20">
+        {/* Minimal Footer */}
+        <div className="px-3 py-3 border-t border-border/20">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push('/dashboard/settings')}
             className={cn(
-              'w-full justify-start h-10 px-3 rounded-xl transition-all duration-200',
-              'hover:bg-accent/80 hover:scale-[1.02] active:scale-[0.98]',
-              'group',
+              'w-full justify-start h-9 px-2.5 rounded-lg transition-colors duration-150',
+              'hover:bg-accent text-muted-foreground hover:text-foreground',
               isCollapsed && 'justify-center px-0'
             )}
             title={isCollapsed ? 'Settings' : undefined}
           >
-            <Settings className={cn(
-              'w-4 h-4 flex-shrink-0 transition-colors',
-              'group-hover:text-primary'
-            )} />
+            <Settings className="w-4 h-4 flex-shrink-0" />
             {!isCollapsed && (
-              <span className="ml-3 font-medium group-hover:text-primary transition-colors">
+              <span className="ml-2.5 text-sm">
                 Settings
               </span>
             )}

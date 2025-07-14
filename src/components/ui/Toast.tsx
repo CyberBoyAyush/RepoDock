@@ -36,26 +36,26 @@ export function Toast({ id, type, title, message, duration = 5000, onClose }: To
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
+        return <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-500" />;
       case 'error':
-        return <AlertCircle className="w-5 h-5 text-red-500" />;
+        return <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-500" />;
       case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+        return <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-500" />;
       case 'info':
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <Info className="w-5 h-5 text-blue-600 dark:text-blue-500" />;
     }
   };
 
   const getBackgroundColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-50/95 border-green-200/50 dark:bg-green-950/95 dark:border-green-800/50 backdrop-blur-xl';
+        return 'bg-green-100/95 border-green-300/70 dark:bg-green-950/95 dark:border-green-800/50 backdrop-blur-xl';
       case 'error':
-        return 'bg-red-50/95 border-red-200/50 dark:bg-red-950/95 dark:border-red-800/50 backdrop-blur-xl';
+        return 'bg-red-100/95 border-red-300/70 dark:bg-red-950/95 dark:border-red-800/50 backdrop-blur-xl';
       case 'warning':
-        return 'bg-yellow-50/95 border-yellow-200/50 dark:bg-yellow-950/95 dark:border-yellow-800/50 backdrop-blur-xl';
+        return 'bg-yellow-100/95 border-yellow-300/70 dark:bg-yellow-950/95 dark:border-yellow-800/50 backdrop-blur-xl';
       case 'info':
-        return 'bg-blue-50/95 border-blue-200/50 dark:bg-blue-950/95 dark:border-blue-800/50 backdrop-blur-xl';
+        return 'bg-blue-100/95 border-blue-300/70 dark:bg-blue-950/95 dark:border-blue-800/50 backdrop-blur-xl';
     }
   };
 
