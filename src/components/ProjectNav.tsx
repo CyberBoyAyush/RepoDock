@@ -34,6 +34,8 @@ import { PullRequestList } from '@/components/PullRequestList';
 import { IssueList } from '@/components/IssueList';
 import { RepositoryConnection } from '@/components/RepositoryConnection';
 import { GitHubConnectionStatus } from '@/components/GitHubConnectionStatus';
+import { useProjectStats } from '@/hooks/useProjectStats';
+import { formatRepositoryUrl } from '@/lib/github-app';
 import { Task } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
 
@@ -41,6 +43,7 @@ import { formatRelativeTime } from '@/lib/utils';
 export function ProjectNav() {
   const { currentProject, setCurrentProject } = useProjects();
   const { loadTasks, getFilteredTasks, setFilter } = useTasks();
+  const { stats, isLoading: statsLoading } = useProjectStats(currentProject?.id || null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,12 +155,13 @@ export function ProjectNav() {
               <div className="flex items-center space-x-2">
                 {currentProject.repository && (
                   <a
-                    href={currentProject.repository}
+                    href={formatRepositoryUrl(currentProject.repository)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-muted/50 hover:bg-muted/70 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-sm"
+                    className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-md cursor-pointer"
                   >
-                    <span>Repo</span>
+                    <GitBranch className="w-3 h-3" />
+                    <span>Repository</span>
                     <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
@@ -280,16 +284,29 @@ export function ProjectNav() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pull Requests</p>
-                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">0</p>
+                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">
+                              {statsLoading ? '...' : stats.pullRequests.total}
+                            </p>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-muted-foreground/40 rounded-full"></div>
-                              <span className="text-xs text-muted-foreground font-medium">Coming Soon</span>
+                              <div className="w-3 h-3 bg-green-500 rounded-full shadow-sm"></div>
+                              <span className="text-xs text-muted-foreground font-medium">Open</span>
                             </div>
-                            <span className="text-xs font-bold text-purple-600">-</span>
+                            <span className="text-xs font-bold text-green-600">
+                              {statsLoading ? '-' : stats.pullRequests.open}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-purple-500 rounded-full shadow-sm"></div>
+                              <span className="text-xs text-muted-foreground font-medium">Merged</span>
+                            </div>
+                            <span className="text-xs font-bold text-purple-600">
+                              {statsLoading ? '-' : stats.pullRequests.merged}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -311,16 +328,29 @@ export function ProjectNav() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Issues</p>
-                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">0</p>
+                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">
+                              {statsLoading ? '...' : stats.issues.total}
+                            </p>
                           </div>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 bg-muted-foreground/40 rounded-full"></div>
-                              <span className="text-xs text-muted-foreground font-medium">Coming Soon</span>
+                              <div className="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
+                              <span className="text-xs text-muted-foreground font-medium">Open</span>
                             </div>
-                            <span className="text-xs font-bold text-red-600">-</span>
+                            <span className="text-xs font-bold text-red-600">
+                              {statsLoading ? '-' : stats.issues.open}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 bg-gray-500 rounded-full shadow-sm"></div>
+                              <span className="text-xs text-muted-foreground font-medium">Closed</span>
+                            </div>
+                            <span className="text-xs font-bold text-gray-600">
+                              {statsLoading ? '-' : stats.issues.closed}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -342,7 +372,9 @@ export function ProjectNav() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Environment</p>
-                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">-</p>
+                            <p className="text-2xl md:text-3xl font-bold text-foreground mt-1">
+                              {statsLoading ? '...' : stats.envVariables.total}
+                            </p>
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -351,7 +383,9 @@ export function ProjectNav() {
                               <div className="w-3 h-3 bg-emerald-500 rounded-full shadow-sm"></div>
                               <span className="text-xs text-muted-foreground font-medium">Variables</span>
                             </div>
-                            <span className="text-xs font-bold text-emerald-600">Secure</span>
+                            <span className="text-xs font-bold text-emerald-600">
+                              {stats.envVariables.total > 0 ? 'Secure' : 'None'}
+                            </span>
                           </div>
                         </div>
                       </div>

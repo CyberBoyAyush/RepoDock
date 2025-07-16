@@ -21,7 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Project, GitHubRepository } from '@/types';
-import { parseRepositoryIdentifier } from '@/lib/github-app';
+import { parseRepositoryIdentifier, formatRepositoryUrl } from '@/lib/github-app';
 
 interface RepositoryConnectionProps {
   project: Project;
@@ -179,7 +179,11 @@ export function RepositoryConnection({ project, onUpdate }: RepositoryConnection
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(project.repository, '_blank')}
+                    onClick={() => {
+                      if (project.repository) {
+                        window.open(formatRepositoryUrl(project.repository), '_blank');
+                      }
+                    }}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     View

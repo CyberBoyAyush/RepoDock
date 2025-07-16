@@ -454,4 +454,12 @@ export function parseRepositoryIdentifier(repository: string): { owner: string; 
   return null;
 }
 
+// Helper function to format repository URL for links
+export function formatRepositoryUrl(repository: string): string {
+  if (repository.startsWith('http')) {
+    return repository;
+  }
+  return `https://github.com/${repository}`;
+}
+
 export { GitHubAppError };
