@@ -16,7 +16,8 @@ import {
   Plus,
   Filter,
   Search,
-  Calendar
+  Calendar,
+  GitBranch
 } from 'lucide-react';
 import { useProjects } from '@/features/projects/useProjects';
 import { useTasks } from '@/features/tasks/useTasks';
@@ -29,12 +30,16 @@ import { Modal } from '@/components/ui/Modal';
 import { TaskForm } from '@/features/tasks/TaskForm';
 import { TaskList } from '@/components/TaskList';
 import { ProjectEnvVariables } from '@/components/ProjectEnvVariables';
+import { PullRequestList } from '@/components/PullRequestList';
+import { IssueList } from '@/components/IssueList';
+import { RepositoryConnection } from '@/components/RepositoryConnection';
+import { GitHubConnectionStatus } from '@/components/GitHubConnectionStatus';
 import { Task } from '@/types';
 import { formatRelativeTime } from '@/lib/utils';
 
 
 export function ProjectNav() {
-  const { currentProject } = useProjects();
+  const { currentProject, setCurrentProject } = useProjects();
   const { loadTasks, getFilteredTasks, setFilter } = useTasks();
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -545,6 +550,48 @@ export function ProjectNav() {
                 </Card>
               </div>
             </div>
+
+            {/* GitHub Integration Section */}
+            <div className="space-y-6">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900/40 dark:to-gray-800/40 rounded-xl shadow-sm">
+                  <GitBranch className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">GitHub Integration</h2>
+                  <p className="text-sm text-muted-foreground">Connect your repository and manage GitHub App installation</p>
+                </div>
+              </div>
+
+              {currentProject && (
+                <RepositoryConnection
+                  project={currentProject}
+                  onUpdate={async (updates) => {
+                    try {
+                      const response = await fetch(`/api/projects/${currentProject.id}`, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(updates),
+                      });
+
+                      if (response.ok) {
+                        // Update local project state
+                        if (currentProject) {
+                          setCurrentProject({ ...currentProject, ...updates });
+                        }
+                      }
+                    } catch (error) {
+                      // Silent error handling
+                    }
+                  }}
+                />
+              )}
+
+              {/* GitHub App Installation Status */}
+              <GitHubConnectionStatus />
+            </div>
           </div>
         </TabsContent>
 
@@ -644,41 +691,13 @@ export function ProjectNav() {
         </TabsContent>
 
         <TabsContent value="pr">
-          <Card className="border-border/50 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
-              <div className="p-6 bg-gradient-to-br from-purple-50/50 to-purple-100/50 dark:from-purple-950/20 dark:to-purple-900/30 rounded-2xl border border-purple-200/30 dark:border-purple-800/30 mb-6">
-                <GitPullRequest className="w-10 h-10 md:w-12 md:h-12 text-purple-600 dark:text-purple-400" />
-              </div>
-              <CardTitle className="text-lg md:text-xl mb-3 text-center">Pull Requests</CardTitle>
-              <CardDescription className="text-center mb-6 max-w-md text-sm md:text-base">
-                Pull request tracking functionality will be available in the next phase.
-              </CardDescription>
-              <div className="bg-gradient-to-r from-muted/40 to-muted/60 rounded-xl p-4 md:p-6 border border-border/30 max-w-lg">
-                <p className="text-sm md:text-base text-muted-foreground text-center leading-relaxed">
-                  <span className="font-semibold text-purple-600 dark:text-purple-400">Coming soon:</span> Track and manage pull requests across your repositories with automated status updates and review workflows.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {currentProject && <PullRequestList projectId={currentProject.id} />}
+          </div>
         </TabsContent>
 
         <TabsContent value="issues">
-          <Card className="border-border/50 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-12 md:py-16">
-              <div className="p-6 bg-gradient-to-br from-red-50/50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/30 rounded-2xl border border-red-200/30 dark:border-red-800/30 mb-6">
-                <Bug className="w-10 h-10 md:w-12 md:h-12 text-red-600 dark:text-red-400" />
-              </div>
-              <CardTitle className="text-lg md:text-xl mb-3 text-center">Issue Tracking</CardTitle>
-              <CardDescription className="text-center mb-6 max-w-md text-sm md:text-base">
-                Issue tracking functionality will be available in the next phase.
-              </CardDescription>
-              <div className="bg-gradient-to-r from-muted/40 to-muted/60 rounded-xl p-4 md:p-6 border border-border/30 max-w-lg">
-                <p className="text-sm md:text-base text-muted-foreground text-center leading-relaxed">
-                  <span className="font-semibold text-red-600 dark:text-red-400">Coming soon:</span> Create, categorize, and track issues with priorities, assignments, and automated workflows.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {currentProject && <IssueList projectId={currentProject.id} />}
         </TabsContent>
 
         <TabsContent value="env">

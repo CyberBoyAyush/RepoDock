@@ -7,7 +7,9 @@ import {
   Workspace,
   Project,
   EnvVariable,
-  Task
+  Task,
+  PullRequest,
+  Issue
 } from '@/types';
 
 // Singleton Prisma client
@@ -40,6 +42,9 @@ class DatabaseService {
       email: user.email,
       emailVerified: user.emailVerified,
       image: user.image || undefined,
+      githubUsername: user.githubUsername || undefined,
+      githubInstallationId: user.githubInstallationId || undefined,
+      githubInstallationCreatedAt: user.githubInstallationCreatedAt?.toISOString(),
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };
@@ -58,9 +63,29 @@ class DatabaseService {
       email: user.email,
       emailVerified: user.emailVerified,
       image: user.image || undefined,
+      githubUsername: user.githubUsername || undefined,
+      githubInstallationId: user.githubInstallationId || undefined,
+      githubInstallationCreatedAt: user.githubInstallationCreatedAt?.toISOString(),
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };
+  }
+
+  async updateUser(userId: string, data: {
+    name?: string;
+    email?: string;
+    image?: string;
+    githubUsername?: string;
+    githubInstallationId?: string;
+    githubInstallationCreatedAt?: Date;
+  }): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...data,
+        updatedAt: new Date(),
+      },
+    });
   }
 
   // Workspace operations
@@ -157,6 +182,9 @@ class DatabaseService {
       workspaceId: project.workspaceId,
       userId: project.userId,
       repository: project.repository || undefined,
+      githubRepoId: project.githubRepoId || undefined,
+      githubOwner: project.githubOwner || undefined,
+      githubRepo: project.githubRepo || undefined,
       status: project.status as Project['status'],
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -177,6 +205,9 @@ class DatabaseService {
       workspaceId: project.workspaceId,
       userId: project.userId,
       repository: project.repository || undefined,
+      githubRepoId: project.githubRepoId || undefined,
+      githubOwner: project.githubOwner || undefined,
+      githubRepo: project.githubRepo || undefined,
       status: project.status as Project['status'],
       createdAt: project.createdAt.toISOString(),
       updatedAt: project.updatedAt.toISOString(),
@@ -216,6 +247,9 @@ class DatabaseService {
         name: updates.name,
         description: updates.description,
         repository: updates.repository,
+        githubRepoId: updates.githubRepoId,
+        githubOwner: updates.githubOwner,
+        githubRepo: updates.githubRepo,
         status: updates.status,
       },
     });
@@ -404,6 +438,376 @@ class DatabaseService {
 
   async deleteTask(id: string): Promise<void> {
     await this.prisma.task.delete({
+      where: { id },
+    });
+  }
+
+  // Pull Request operations
+  async getPullRequests(projectId: string, userId?: string): Promise<PullRequest[]> {
+    const whereClause: any = { projectId };
+
+    // If userId is provided, filter by user
+    if (userId) {
+      whereClause.userId = userId;
+    }
+
+    const pullRequests = await this.prisma.pullRequest.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return pullRequests.map(pr => ({
+      id: pr.id,
+      title: pr.title,
+      description: pr.description || undefined,
+      status: pr.status as PullRequest['status'],
+      url: pr.url || undefined,
+      number: pr.number || undefined,
+      githubId: pr.githubId || undefined,
+      sourceBranch: pr.sourceBranch || undefined,
+      targetBranch: pr.targetBranch || undefined,
+      author: pr.author || undefined,
+      authorAvatar: pr.authorAvatar || undefined,
+      labels: pr.labels || undefined,
+      assignees: pr.assignees || undefined,
+      reviewers: pr.reviewers || undefined,
+      isDraft: pr.isDraft || false,
+      mergeable: pr.mergeable || undefined,
+      additions: pr.additions || undefined,
+      deletions: pr.deletions || undefined,
+      changedFiles: pr.changedFiles || undefined,
+      projectId: pr.projectId,
+      userId: pr.userId,
+      createdAt: pr.createdAt.toISOString(),
+      updatedAt: pr.updatedAt.toISOString(),
+    }));
+  }
+
+  async getPullRequest(id: string): Promise<PullRequest | null> {
+    const pr = await this.prisma.pullRequest.findUnique({
+      where: { id },
+    });
+
+    if (!pr) return null;
+
+    return {
+      id: pr.id,
+      title: pr.title,
+      description: pr.description || undefined,
+      status: pr.status as PullRequest['status'],
+      url: pr.url || undefined,
+      number: pr.number || undefined,
+      githubId: pr.githubId || undefined,
+      sourceBranch: pr.sourceBranch || undefined,
+      targetBranch: pr.targetBranch || undefined,
+      author: pr.author || undefined,
+      authorAvatar: pr.authorAvatar || undefined,
+      labels: pr.labels || undefined,
+      assignees: pr.assignees || undefined,
+      reviewers: pr.reviewers || undefined,
+      isDraft: pr.isDraft || false,
+      mergeable: pr.mergeable || undefined,
+      additions: pr.additions || undefined,
+      deletions: pr.deletions || undefined,
+      changedFiles: pr.changedFiles || undefined,
+      projectId: pr.projectId,
+      userId: pr.userId,
+      createdAt: pr.createdAt.toISOString(),
+      updatedAt: pr.updatedAt.toISOString(),
+    };
+  }
+
+  async createPullRequest(pr: Omit<PullRequest, 'createdAt' | 'updatedAt'>): Promise<PullRequest> {
+    const created = await this.prisma.pullRequest.upsert({
+      where: { id: pr.id },
+      update: {
+        title: pr.title,
+        description: pr.description,
+        status: pr.status,
+        url: pr.url,
+        number: pr.number,
+        githubId: pr.githubId,
+        sourceBranch: pr.sourceBranch,
+        targetBranch: pr.targetBranch,
+        author: pr.author,
+        authorAvatar: pr.authorAvatar,
+        labels: pr.labels,
+        assignees: pr.assignees,
+        reviewers: pr.reviewers,
+        isDraft: pr.isDraft || false,
+        mergeable: pr.mergeable,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        changedFiles: pr.changedFiles,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: pr.id,
+        title: pr.title,
+        description: pr.description,
+        status: pr.status,
+        url: pr.url,
+        number: pr.number,
+        githubId: pr.githubId,
+        sourceBranch: pr.sourceBranch,
+        targetBranch: pr.targetBranch,
+        author: pr.author,
+        authorAvatar: pr.authorAvatar,
+        labels: pr.labels,
+        assignees: pr.assignees,
+        reviewers: pr.reviewers,
+        isDraft: pr.isDraft || false,
+        mergeable: pr.mergeable,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        changedFiles: pr.changedFiles,
+        projectId: pr.projectId,
+        userId: pr.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      id: created.id,
+      title: created.title,
+      description: created.description || undefined,
+      status: created.status as PullRequest['status'],
+      url: created.url || undefined,
+      number: created.number || undefined,
+      githubId: created.githubId || undefined,
+      sourceBranch: created.sourceBranch || undefined,
+      targetBranch: created.targetBranch || undefined,
+      author: created.author || undefined,
+      authorAvatar: created.authorAvatar || undefined,
+      labels: created.labels || undefined,
+      assignees: created.assignees || undefined,
+      reviewers: created.reviewers || undefined,
+      isDraft: created.isDraft || false,
+      mergeable: created.mergeable || undefined,
+      additions: created.additions || undefined,
+      deletions: created.deletions || undefined,
+      changedFiles: created.changedFiles || undefined,
+      projectId: created.projectId,
+      userId: created.userId,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  }
+
+  async updatePullRequest(id: string, updates: Partial<PullRequest>): Promise<void> {
+    await this.prisma.pullRequest.update({
+      where: { id },
+      data: {
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        url: updates.url,
+        number: updates.number,
+        githubId: updates.githubId,
+        sourceBranch: updates.sourceBranch,
+        targetBranch: updates.targetBranch,
+        author: updates.author,
+        authorAvatar: updates.authorAvatar,
+        labels: updates.labels,
+        assignees: updates.assignees,
+        reviewers: updates.reviewers,
+        isDraft: updates.isDraft,
+        mergeable: updates.mergeable,
+        additions: updates.additions,
+        deletions: updates.deletions,
+        changedFiles: updates.changedFiles,
+      },
+    });
+  }
+
+  async deletePullRequest(id: string): Promise<void> {
+    await this.prisma.pullRequest.delete({
+      where: { id },
+    });
+  }
+
+  // Issue operations
+  async getIssues(projectId: string, userId?: string): Promise<Issue[]> {
+    const whereClause: any = { projectId };
+
+    // If userId is provided, filter by user
+    if (userId) {
+      whereClause.userId = userId;
+    }
+
+    const issues = await this.prisma.issue.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return issues.map(issue => ({
+      id: issue.id,
+      title: issue.title,
+      description: issue.description || undefined,
+      status: issue.status as Issue['status'],
+      priority: issue.priority as Issue['priority'],
+      type: issue.type as Issue['type'],
+      url: issue.url || undefined,
+      number: issue.number || undefined,
+      githubId: issue.githubId || undefined,
+      author: issue.author || undefined,
+      authorAvatar: issue.authorAvatar || undefined,
+      assignees: issue.assignees || undefined,
+      labels: issue.labels || undefined,
+      milestone: issue.milestone || undefined,
+      state: issue.state || undefined,
+      stateReason: issue.stateReason || undefined,
+      comments: issue.comments || 0,
+      reactions: issue.reactions || undefined,
+      locked: issue.locked || false,
+      projectId: issue.projectId,
+      userId: issue.userId,
+      createdAt: issue.createdAt.toISOString(),
+      updatedAt: issue.updatedAt.toISOString(),
+    }));
+  }
+
+  async getIssue(id: string): Promise<Issue | null> {
+    const issue = await this.prisma.issue.findUnique({
+      where: { id },
+    });
+
+    if (!issue) return null;
+
+    return {
+      id: issue.id,
+      title: issue.title,
+      description: issue.description || undefined,
+      status: issue.status as Issue['status'],
+      priority: issue.priority as Issue['priority'],
+      type: issue.type as Issue['type'],
+      url: issue.url || undefined,
+      number: issue.number || undefined,
+      githubId: issue.githubId || undefined,
+      author: issue.author || undefined,
+      authorAvatar: issue.authorAvatar || undefined,
+      assignees: issue.assignees || undefined,
+      labels: issue.labels || undefined,
+      milestone: issue.milestone || undefined,
+      state: issue.state || undefined,
+      stateReason: issue.stateReason || undefined,
+      comments: issue.comments || 0,
+      reactions: issue.reactions || undefined,
+      locked: issue.locked || false,
+      projectId: issue.projectId,
+      userId: issue.userId,
+      createdAt: issue.createdAt.toISOString(),
+      updatedAt: issue.updatedAt.toISOString(),
+    };
+  }
+
+  async createIssue(issue: Omit<Issue, 'createdAt' | 'updatedAt'>): Promise<Issue> {
+    const created = await this.prisma.issue.upsert({
+      where: { id: issue.id },
+      update: {
+        title: issue.title,
+        description: issue.description,
+        status: issue.status,
+        priority: issue.priority,
+        type: issue.type,
+        url: issue.url,
+        number: issue.number,
+        githubId: issue.githubId,
+        author: issue.author,
+        authorAvatar: issue.authorAvatar,
+        assignees: issue.assignees,
+        labels: issue.labels,
+        milestone: issue.milestone,
+        state: issue.state,
+        stateReason: issue.stateReason,
+        comments: issue.comments || 0,
+        reactions: issue.reactions,
+        locked: issue.locked || false,
+        updatedAt: new Date(),
+      },
+      create: {
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+        status: issue.status,
+        priority: issue.priority,
+        type: issue.type,
+        url: issue.url,
+        number: issue.number,
+        githubId: issue.githubId,
+        author: issue.author,
+        authorAvatar: issue.authorAvatar,
+        assignees: issue.assignees,
+        labels: issue.labels,
+        milestone: issue.milestone,
+        state: issue.state,
+        stateReason: issue.stateReason,
+        comments: issue.comments || 0,
+        reactions: issue.reactions,
+        locked: issue.locked || false,
+        projectId: issue.projectId,
+        userId: issue.userId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
+    return {
+      id: created.id,
+      title: created.title,
+      description: created.description || undefined,
+      status: created.status as Issue['status'],
+      priority: created.priority as Issue['priority'],
+      type: created.type as Issue['type'],
+      url: created.url || undefined,
+      number: created.number || undefined,
+      githubId: created.githubId || undefined,
+      author: created.author || undefined,
+      authorAvatar: created.authorAvatar || undefined,
+      assignees: created.assignees || undefined,
+      labels: created.labels || undefined,
+      milestone: created.milestone || undefined,
+      state: created.state || undefined,
+      stateReason: created.stateReason || undefined,
+      comments: created.comments || 0,
+      reactions: created.reactions || undefined,
+      locked: created.locked || false,
+      projectId: created.projectId,
+      userId: created.userId,
+      createdAt: created.createdAt.toISOString(),
+      updatedAt: created.updatedAt.toISOString(),
+    };
+  }
+
+  async updateIssue(id: string, updates: Partial<Issue>): Promise<void> {
+    await this.prisma.issue.update({
+      where: { id },
+      data: {
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        priority: updates.priority,
+        type: updates.type,
+        url: updates.url,
+        number: updates.number,
+        githubId: updates.githubId,
+        author: updates.author,
+        authorAvatar: updates.authorAvatar,
+        assignees: updates.assignees,
+        labels: updates.labels,
+        milestone: updates.milestone,
+        state: updates.state,
+        stateReason: updates.stateReason,
+        comments: updates.comments,
+        reactions: updates.reactions,
+        locked: updates.locked,
+      },
+    });
+  }
+
+  async deleteIssue(id: string): Promise<void> {
+    await this.prisma.issue.delete({
       where: { id },
     });
   }

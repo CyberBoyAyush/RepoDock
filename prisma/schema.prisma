@@ -25,6 +25,11 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // GitHub Integration
+  githubUsername       String?
+  githubInstallationId String?
+  githubInstallationCreatedAt DateTime?
+
   // Application relations
   workspaces    Workspace[]
   projects      Project[]
@@ -109,7 +114,10 @@ model Project {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  repository  String?
+  repository  String?   // GitHub repository URL or full name (owner/repo)
+  githubRepoId String?  // GitHub repository ID for API calls
+  githubOwner String?   // Repository owner/organization
+  githubRepo  String?   // Repository name
   status      String    @default("active") // 'active' | 'archived' | 'draft'
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -158,36 +166,61 @@ model Task {
 }
 
 model PullRequest {
-  id          String   @id
-  title       String
-  description String?
-  status      String   @default("open") // 'open' | 'closed' | 'merged'
-  url         String?
-  number      Int?
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id
+  title         String
+  description   String?
+  status        String   @default("open") // 'open' | 'closed' | 'merged' | 'draft'
+  url           String?  // GitHub PR URL
+  number        Int?     // GitHub PR number
+  githubId      String?  // GitHub PR ID
+  sourceBranch  String?  // Source branch name
+  targetBranch  String?  // Target branch name (usually main/master)
+  author        String?  // GitHub username of PR author
+  authorAvatar  String?  // GitHub avatar URL
+  labels        String?  // JSON string of GitHub labels
+  assignees     String?  // JSON string of GitHub assignees
+  reviewers     String?  // JSON string of GitHub reviewers
+  isDraft       Boolean  @default(false)
+  mergeable     Boolean? // Whether PR can be merged
+  additions     Int?     // Lines added
+  deletions     Int?     // Lines deleted
+  changedFiles  Int?     // Number of files changed
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("pull_request")
 }
 
 model Issue {
-  id          String   @id
-  title       String
-  description String?
-  status      String   @default("open") // 'open' | 'closed'
-  priority    String   @default("medium") // 'low' | 'medium' | 'high' | 'urgent'
-  url         String?
-  number      Int?
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id
+  title        String
+  description  String?
+  status       String   @default("open") // 'open' | 'closed'
+  priority     String   @default("medium") // 'low' | 'medium' | 'high' | 'urgent'
+  type         String   @default("bug") // 'bug' | 'feature' | 'enhancement' | 'documentation'
+  url          String?  // GitHub issue URL
+  number       Int?     // GitHub issue number
+  githubId     String?  // GitHub issue ID
+  author       String?  // GitHub username of issue author
+  authorAvatar String?  // GitHub avatar URL
+  assignees    String?  // JSON string of GitHub assignees
+  labels       String?  // JSON string of GitHub labels
+  milestone    String?  // GitHub milestone
+  state        String?  // GitHub state (open, closed)
+  stateReason  String?  // GitHub state reason (completed, not_planned, reopened)
+  comments     Int?     @default(0) // Number of comments
+  reactions    String?  // JSON string of GitHub reactions
+  locked       Boolean  @default(false) // Whether issue is locked
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("issue")
 }

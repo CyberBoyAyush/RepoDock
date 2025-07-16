@@ -109,7 +109,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent leading-tight">
-                    Welcome back, {user?.name || user?.username}!
+                    Welcome back, {user?.name}!
                   </h1>
                   <p className="text-muted-foreground text-base sm:text-lg mt-1">
                     Here's what's happening in <span className="font-medium text-foreground">{currentWorkspace.name}</span> today.

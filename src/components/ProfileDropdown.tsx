@@ -31,7 +31,7 @@ export function ProfileDropdown({ onLogout }: ProfileDropdownProps) {
           className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
         >
           <User className="w-4 h-4" />
-          <span>{user.username}</span>
+          <span>{user.name}</span>
           <ChevronDown className={cn(
             "w-3 h-3 transition-transform",
             isOpen && "rotate-180"
@@ -51,7 +51,7 @@ export function ProfileDropdown({ onLogout }: ProfileDropdownProps) {
               <div className="p-2">
                 {/* User Info */}
                 <div className="px-2 py-1.5 border-b border-border mb-2">
-                  <p className="text-sm font-medium">{user.username}</p>
+                  <p className="text-sm font-medium">{user.name}</p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
 

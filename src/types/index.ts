@@ -8,6 +8,9 @@ export interface User {
   emailVerified: boolean;
   image?: string;
   encryptionPassword?: string; // Optional encryption password for env variables
+  githubUsername?: string;
+  githubInstallationId?: string;
+  githubInstallationCreatedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,7 +32,10 @@ export interface Project {
   description?: string;
   workspaceId: string;
   userId: string;
-  repository?: string;
+  repository?: string; // GitHub repository URL or full name (owner/repo)
+  githubRepoId?: string; // GitHub repository ID for API calls
+  githubOwner?: string; // Repository owner/organization
+  githubRepo?: string; // Repository name
   status: 'active' | 'archived' | 'draft';
   createdAt: string;
   updatedAt: string;
@@ -66,10 +72,23 @@ export interface PullRequest {
   title: string;
   description?: string;
   status: 'open' | 'closed' | 'merged' | 'draft';
+  url?: string; // GitHub PR URL
+  number?: number; // GitHub PR number
+  githubId?: string; // GitHub PR ID
+  sourceBranch?: string; // Source branch name
+  targetBranch?: string; // Target branch name (usually main/master)
+  author?: string; // GitHub username of PR author
+  authorAvatar?: string; // GitHub avatar URL
+  labels?: string; // JSON string of GitHub labels
+  assignees?: string; // JSON string of GitHub assignees
+  reviewers?: string; // JSON string of GitHub reviewers
+  isDraft?: boolean;
+  mergeable?: boolean; // Whether PR can be merged
+  additions?: number; // Lines added
+  deletions?: number; // Lines deleted
+  changedFiles?: number; // Number of files changed
   projectId: string;
   userId: string;
-  sourceBranch: string;
-  targetBranch: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,12 +97,24 @@ export interface Issue {
   id: string;
   title: string;
   description?: string;
-  status: 'open' | 'closed' | 'in-progress';
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   type: 'bug' | 'feature' | 'enhancement' | 'documentation';
+  url?: string; // GitHub issue URL
+  number?: number; // GitHub issue number
+  githubId?: string; // GitHub issue ID
+  author?: string; // GitHub username of issue author
+  authorAvatar?: string; // GitHub avatar URL
+  assignees?: string; // JSON string of GitHub assignees
+  labels?: string; // JSON string of GitHub labels
+  milestone?: string; // GitHub milestone
+  state?: string; // GitHub state (open, closed)
+  stateReason?: string; // GitHub state reason (completed, not_planned, reopened)
+  comments?: number; // Number of comments
+  reactions?: string; // JSON string of GitHub reactions
+  locked?: boolean; // Whether issue is locked
   projectId: string;
   userId: string;
-  assignedTo?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -184,6 +215,109 @@ export interface EncryptedData {
   encrypted: string;
   iv: string;
   salt: string;
+}
+
+// GitHub API types
+export interface GitHubRepository {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  description?: string;
+  private: boolean;
+  html_url: string;
+  clone_url: string;
+  ssh_url: string;
+  default_branch: string;
+}
+
+export interface GitHubUser {
+  login: string;
+  id: number;
+  avatar_url: string;
+  html_url: string;
+}
+
+export interface GitHubLabel {
+  id: number;
+  name: string;
+  color: string;
+  description?: string;
+}
+
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  body?: string;
+  state: 'open' | 'closed';
+  state_reason?: 'completed' | 'not_planned' | 'reopened';
+  user: GitHubUser;
+  assignees: GitHubUser[];
+  labels: GitHubLabel[];
+  milestone?: {
+    title: string;
+    description?: string;
+    state: 'open' | 'closed';
+  };
+  comments: number;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
+  locked: boolean;
+  pull_request?: {
+    url: string;
+    html_url: string;
+    diff_url: string;
+    patch_url: string;
+  }; // Present if this "issue" is actually a pull request
+  reactions: {
+    total_count: number;
+    '+1': number;
+    '-1': number;
+    laugh: number;
+    hooray: number;
+    confused: number;
+    heart: number;
+    rocket: number;
+    eyes: number;
+  };
+}
+
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body?: string;
+  state: 'open' | 'closed';
+  user: GitHubUser;
+  assignees: GitHubUser[];
+  requested_reviewers: GitHubUser[];
+  labels: GitHubLabel[];
+  head: {
+    ref: string;
+    sha: string;
+  };
+  base: {
+    ref: string;
+    sha: string;
+  };
+  draft: boolean;
+  mergeable?: boolean;
+  mergeable_state: string;
+  merged: boolean;
+  merged_at?: string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  closed_at?: string;
+  additions: number;
+  deletions: number;
+  changed_files: number;
 }
 
 // Component prop types

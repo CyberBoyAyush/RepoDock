@@ -77,10 +77,17 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
 
     try {
       console.log('Attempting to create/update project...');
+
+      // Clean formData to convert null to undefined
+      const cleanedFormData = {
+        ...formData,
+        repository: formData.repository || undefined,
+      };
+
       if (isEditing && project) {
-        await updateProject(project.id, formData);
+        await updateProject(project.id, cleanedFormData);
       } else {
-        await createProject(formData, currentWorkspace.id, user.id);
+        await createProject(cleanedFormData, currentWorkspace.id, user.id);
       }
 
       console.log('Project created/updated successfully');
@@ -147,7 +154,7 @@ export function ProjectForm({ project, onSuccess, onCancel }: ProjectFormProps) 
         <Input
           label="Repository URL"
           type="url"
-          value={formData.repository}
+          value={formData.repository || ''}
           onChange={(e) => handleInputChange('repository', e.target.value)}
           error={errors.repository}
           placeholder="https://github.com/username/repository (optional)"

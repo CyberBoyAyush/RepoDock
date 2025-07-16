@@ -6,7 +6,7 @@ import { taskSchema } from '@/lib/zodSchemas';
 // PUT /api/tasks/[id] - Update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -17,10 +17,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: taskId } = await params;
     const body = await request.json();
     const validatedData = taskSchema.partial().parse(body);
 
-    await database.updateTask(params.id, validatedData);
+    await database.updateTask(taskId, validatedData);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update task:', error);
@@ -34,7 +35,7 @@ export async function PUT(
 // DELETE /api/tasks/[id] - Delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -45,7 +46,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await database.deleteTask(params.id);
+    const { id: taskId } = await params;
+    await database.deleteTask(taskId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete task:', error);

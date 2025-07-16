@@ -136,7 +136,7 @@ export function usePreventFlash() {
     // 2. User is authenticated and NOT on public route
     const shouldShowContent = (!cachedUser && isPublicOnlyRoute) || (cachedUser && !isPublicOnlyRoute);
     
-    setShouldShow(shouldShowContent);
+    setShouldShow(Boolean(shouldShowContent));
   }, [pathname]);
 
   return shouldShow;

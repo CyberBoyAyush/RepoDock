@@ -6,7 +6,7 @@ import { workspaceSchema } from '@/lib/zodSchemas';
 // PUT /api/workspaces/[id] - Update workspace
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -17,10 +17,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id: workspaceId } = await params;
     const body = await request.json();
     const validatedData = workspaceSchema.partial().parse(body);
 
-    await database.updateWorkspace(params.id, validatedData);
+    await database.updateWorkspace(workspaceId, validatedData);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update workspace:', error);
@@ -34,7 +35,7 @@ export async function PUT(
 // DELETE /api/workspaces/[id] - Delete workspace
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth.api.getSession({
@@ -45,7 +46,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await database.deleteWorkspace(params.id);
+    const { id: workspaceId } = await params;
+    await database.deleteWorkspace(workspaceId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete workspace:', error);

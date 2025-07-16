@@ -48,6 +48,11 @@ export const workspaceSchema = z.object({
     .max(500, 'Description must be less than 500 characters')
     .optional()
     .or(z.literal('')),
+  color: z
+    .string()
+    .regex(/^#[0-9A-F]{6}$/i, 'Color must be a valid hex color')
+    .optional()
+    .or(z.literal('')),
 });
 
 export const workspaceUpdateSchema = workspaceSchema.partial();
@@ -67,12 +72,16 @@ export const projectFormSchema = z.object({
   repository: z
     .string()
     .optional()
-    .or(z.literal('')),
+    .or(z.literal(''))
+    .or(z.null()),
   status: z.enum(['active', 'archived', 'draft']).default('active'),
 });
 
 export const projectSchema = projectFormSchema.extend({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
+  githubRepoId: z.string().optional().or(z.null()),
+  githubOwner: z.string().optional().or(z.null()),
+  githubRepo: z.string().optional().or(z.null()),
 });
 
 export const projectUpdateSchema = projectSchema.partial();
@@ -173,8 +182,8 @@ export const issueSchema = z.object({
     .max(5000, 'Description must be less than 5000 characters')
     .optional()
     .or(z.literal('')),
-  status: z.enum(['open', 'closed', 'in-progress']).default('open'),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  status: z.enum(['open', 'closed']).default('open'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   type: z.enum(['bug', 'feature', 'enhancement', 'documentation']).default('bug'),
   assignedTo: z
     .string()
