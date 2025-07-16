@@ -6,8 +6,9 @@ import { envVariableSchema } from '@/lib/zodSchemas';
 // PUT /api/env-variables/[id] - Update environment variable
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -26,7 +27,7 @@ export async function PUT(
       projectId: validatedData.projectId || undefined,
     };
 
-    await database.updateEnvVariable(params.id, updateData);
+    await database.updateEnvVariable(id, updateData);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to update environment variable:', error);
@@ -40,8 +41,9 @@ export async function PUT(
 // DELETE /api/env-variables/[id] - Delete environment variable
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const session = await auth.api.getSession({
       headers: request.headers,
@@ -51,7 +53,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await database.deleteEnvVariable(params.id);
+    await database.deleteEnvVariable(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete environment variable:', error);
