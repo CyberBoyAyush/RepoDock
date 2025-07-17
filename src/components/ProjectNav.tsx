@@ -4,7 +4,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   FileText,
   CheckSquare,
@@ -48,6 +48,8 @@ export function ProjectNav() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState('details');
 
   // Helper functions
@@ -64,6 +66,22 @@ export function ProjectNav() {
       default:
         return 'default';
     }
+  };
+
+  // Handle tab change and update URL
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+
+    // Update URL with new tab parameter
+    const params = new URLSearchParams(searchParams.toString());
+    if (newTab === 'details') {
+      params.delete('tab'); // Remove tab param for default tab
+    } else {
+      params.set('tab', newTab);
+    }
+
+    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    router.push(newUrl);
   };
 
   // Handle tab parameter from URL
@@ -178,7 +196,7 @@ export function ProjectNav() {
       </div>
 
       {/* Enhanced Project Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-background via-muted/10 to-background rounded-2xl"></div>
           <TabsList className="relative grid w-full grid-cols-5 h-auto p-2 bg-muted/30 backdrop-blur-sm border border-border/40 shadow-lg">
@@ -411,7 +429,7 @@ export function ProjectNav() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setActiveTab('tasks')}
+                        onClick={() => handleTabChange('tasks')}
                         className="text-xs md:text-sm hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                       >
                         View All Tasks
@@ -482,7 +500,7 @@ export function ProjectNav() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setActiveTab('tasks')}
+                              onClick={() => handleTabChange('tasks')}
                               className="text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                             >
                               View {getFilteredTasks().length - 4} more tasks →
@@ -567,7 +585,7 @@ export function ProjectNav() {
                     <Button
                       className="w-full justify-start bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800 hover:from-emerald-100 hover:to-emerald-200 dark:hover:from-emerald-900/30 dark:hover:to-emerald-800/30 text-emerald-700 dark:text-emerald-300"
                       variant="outline"
-                      onClick={() => setActiveTab('env')}
+                      onClick={() => handleTabChange('env')}
                     >
                       <Settings className="w-4 h-4 mr-3" />
                       Environment Variables
@@ -575,7 +593,7 @@ export function ProjectNav() {
                     <Button
                       className="w-full justify-start bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-purple-200 dark:hover:from-purple-900/30 dark:hover:to-purple-800/30 text-purple-700 dark:text-purple-300"
                       variant="outline"
-                      onClick={() => setActiveTab('pr')}
+                      onClick={() => handleTabChange('pr')}
                     >
                       <GitPullRequest className="w-4 h-4 mr-3" />
                       Pull Requests
