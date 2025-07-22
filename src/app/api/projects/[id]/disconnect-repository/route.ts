@@ -33,10 +33,10 @@ export async function POST(
 
     // Update project to remove repository connection
     await database.updateProject(projectId, {
-      repository: null,
-      githubOwner: null,
-      githubRepo: null,
-      githubRepoId: null,
+      repository: undefined,
+      githubOwner: undefined,
+      githubRepo: undefined,
+      githubRepoId: undefined,
     });
 
     return NextResponse.json({ 
